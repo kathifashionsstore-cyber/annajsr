@@ -1,0 +1,16 @@
+{
+  "short_name": "JSR Annamayya",
+  "name": "JSR Annamayya Portfolio Upgrade",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "type": "image/svg+xml",
+      "sizes": "any"
+    }
+  ],
+  "start_url": "/",
+  "background_color": "#1e1b18",
+  "theme_color": "#c1440e",
+  "display": "standalone",
+  "orientation": "portrait"
+}

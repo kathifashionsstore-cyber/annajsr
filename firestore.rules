@@ -1,0 +1,110 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Helper function to check if user is authenticated (Admin)
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // 1. Portfolio website public content
+    // Anyone can read, but only logged-in Admin can write/modify
+    match /content/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /timeline/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /videos/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /stats/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /awards/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+    
+    match /gallery/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    // 2. Contact form messages
+    // Anyone can submit (create) a message, but only the Admin can view (read) and delete it
+    match /contacts/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    // 3. New Collections from Upgrade
+    match /heroSlides/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /testimonials/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /press/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /resume/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /chatLogs/{document} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /systemLogs/{document} {
+      allow read, create, update, delete: if isAdmin();
+    }
+
+    match /analyticsEvents/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /analyticsRollups/{document} {
+      allow read: if true;
+      allow create, update: if true;
+      allow delete: if isAdmin();
+    }
+
+    match /services/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /departments/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /caseStudies/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
+    match /highlights/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+  }
+}

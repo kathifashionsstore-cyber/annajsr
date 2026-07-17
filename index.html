@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/favicon.svg" />
+    <link rel="manifest" href="/manifest.json" />
+    <link rel="canonical" href="https://jsrannamayya.com/" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#c1440e" />
+    <meta name="description" content="JSR Annamayya is a National Award winning Behaviour Change & IEC Specialist with 9+ years of experience leading solid waste management, climate action, and urban governance across AP & Telangana." />
+    <title>JSR Annamayya | Behaviour Change & IEC Specialist</title>
+    
+    <!-- JSON-LD Structured Data -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Person",
+      "name": "JSR Annamayya",
+      "jobTitle": "Behaviour Change & IEC Specialist",
+      "url": "https://jsrannamayya.com",
+      "description": "National Award-winning public systems specialist with 9+ years experience leading waste management and climate initiatives across Andhra Pradesh & Telangana.",
+      "award": [
+        "Vande Bharat Puraskar 2023",
+        "National Youth Icon Award 2022",
+        "Indian Star Icon Award 2021"
+      ],
+      "sameAs": [
+        "https://www.linkedin.com/in/jsr-annamayya-18a59665/"
+      ]
+    }
+    </script>
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "BreadcrumbList",
+      "itemListElement": [
+        {
+          "@type": "ListItem",
+          "position": 1,
+          "name": "Home",
+          "item": "https://jsrannamayya.com"
+        }
+      ]
+    }
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script>
+      // Force unregister any stale service workers from previous local server configurations
+      if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistrations().then(function(registrations) {
+          for (let registration of registrations) {
+            registration.unregister().then(function() {
+              console.log('Stale service worker unregistered successfully.');
+            });
+          }
+        }).catch(function(err) {
+          console.warn('Failed to unregister service workers:', err);
+        });
+      }
+    </script>
+    <script type="module" src="/src/main.jsx"></script>
+  </body>
+</html>

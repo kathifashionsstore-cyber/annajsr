@@ -1,0 +1,17 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated (Admin)
+    function isAdmin() {
+      return request.auth != null;
+    }
+
+    // Public read-only access for anyone (so images and videos render on the website)
+    // Write and delete operations are restricted strictly to the authenticated Admin
+    match /{allPaths=**} {
+      allow read: if true;
+      allow write, delete: if isAdmin();
+    }
+  }
+}
