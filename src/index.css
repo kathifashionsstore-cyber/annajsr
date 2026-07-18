@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --color-primary: #111111;
+  --color-heading: #181818;
+  --color-body: #5f5f5f;
+  --color-muted: #898989;
+  --color-white: #ffffff;
+  --color-cream: #f4efe7;
+  --color-light-cream: #f8f6f1;
+  --color-beige: #d8cbbb;
+  --color-accent: #a98760;
+  --color-accent-dark: #806346;
+  --color-border: #ddd7ce;
+  --color-footer: #111111;
+}
+
 html {
   scroll-behavior: smooth;
 }
@@ -9,9 +24,15 @@ html {
 body {
   margin: 0;
   padding: 0;
-  background-color: #F7F4F0;
-  color: #1E1B18;
-  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--color-cream);
+  color: var(--color-body);
+  font-family: 'Manrope', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6, .font-serif-edi {
+  font-family: 'Cormorant Garamond', Georgia, serif;
+  color: var(--color-heading);
 }
 
 /* Speaking Avatar Animations */
@@ -50,4 +71,37 @@ body {
   80% { transform: translateY(0); opacity: 1; }
   90% { transform: translateY(-15px); opacity: 1; }
   100% { transform: translateY(0); opacity: 1; }
+}
+
+/* Custom Editorial Typography Classes */
+.text-hero-headline {
+  font-size: clamp(72px, 7vw, 110px) !important;
+  line-height: 0.95 !important;
+  font-weight: 500 !important;
+}
+
+.text-inner-headline {
+  font-size: clamp(64px, 6vw, 96px) !important;
+  line-height: 0.96 !important;
+}
+
+.text-section-headline {
+  font-size: clamp(48px, 5vw, 76px) !important;
+  line-height: 1 !important;
+}
+
+.text-card-headline {
+  font-size: clamp(27px, 3vw, 34px) !important;
+  line-height: 1.15 !important;
+}
+
+.text-editorial-body {
+  font-size: clamp(16px, 1.25vw, 18px) !important;
+  line-height: 1.75 !important;
+}
+
+.text-section-label {
+  font-size: clamp(12px, 1vw, 14px) !important;
+  letter-spacing: 0.16em !important;
+  text-transform: uppercase !important;
 }
