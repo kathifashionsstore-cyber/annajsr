@@ -1,7 +1,20 @@
 {
   "cleanUrls": true,
+  "redirects": [
+    {
+      "source": "/:path*",
+      "has": [
+        {
+          "type": "host",
+          "value": "jsrannamayya.in"
+        }
+      ],
+      "destination": "https://www.jsrannamayya.in/:path*",
+      "permanent": true
+    }
+  ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!api/|assets/|static/|favicon.ico|robots.txt|sitemap.xml|manifest.json|og-image.jpg).*)", "destination": "/index.html" }
   ]
 }
