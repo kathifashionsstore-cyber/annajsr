@@ -47,31 +47,36 @@ const FALLBACK_TIMELINE = [
     number: "May 2024 – Feb 2026",
     title: "Council for Green Revolution",
     subtitle: "Assistant Director",
-    text: "Led state-level environmental education & climate action initiatives with Dept. of School/College Education, Telangana Biodiversity Board, GHMC, and Forest Dept. Spearheaded the Young Earth Leaders Program (YELP), driving sustainability & youth-led climate advocacy."
+    text: "Led state-level environmental education & climate action initiatives with Dept. of School/College Education, Telangana Biodiversity Board, GHMC, and Forest Dept. Spearheaded the Young Earth Leaders Program (YELP), driving sustainability & youth-led climate advocacy.",
+    order: 5
   },
   {
     number: "Apr 2023 – Mar 2024",
     title: "Nellore Municipal Corporation",
     subtitle: "IEC Expert",
-    text: "Structured urban sanitation & municipal solid waste management (SWM) systems. Supervised technical coordination, field compliance, and citizen engagement. Driven outcomes linked directly to national Safai Mitra Suraksha recognition."
+    text: "Structured urban sanitation & municipal solid waste management (SWM) systems. Supervised technical coordination, field compliance, and citizen engagement. Driven outcomes linked directly to national Safai Mitra Suraksha recognition.",
+    order: 4
   },
   {
     number: "Feb 2021 – Mar 2023",
     title: "Rajamahendravaram Municipal Corp.",
     subtitle: "IEC Specialist",
-    text: "Designed robust community models and waste campaigns that achieved a 15% efficiency increase in door-to-door waste collection. Maintained operational scaling contributing to GFC Star Rating and Swachh Bharat milestones."
+    text: "Designed robust community models and waste campaigns that achieved a 15% efficiency increase in door-to-door waste collection. Maintained operational scaling contributing to GFC Star Rating and Swachh Bharat milestones.",
+    order: 3
   },
   {
     number: "Mar 2020 – Jan 2021",
     title: "Guntur Municipal Corporation",
     subtitle: "IEC / SWM Program Lead",
-    text: "Directed large-scale citizen mobilisation and solid waste management campaigns. Spearheaded targeted communications that elevated Guntur's Swachh Survekshan rank from 121 to 4."
+    text: "Directed large-scale citizen mobilisation and solid waste management campaigns. Spearheaded targeted communications that elevated Guntur's Swachh Survekshan rank from 121 to 4.",
+    order: 2
   },
   {
     number: "2016 – 2019",
     title: "Wipro & Accenture",
     subtitle: "Quality Team Lead / Special Project Area Lead",
-    text: "Managed project operations, structured delivery, and quality assurance workflows with teams of up to 40+ engineers for Silicon Valley enterprise clients before shifting focus toward high-impact public governance systems."
+    text: "Managed project operations, structured delivery, and quality assurance workflows with teams of up to 40+ engineers for Silicon Valley enterprise clients before shifting focus toward high-impact public governance systems.",
+    order: 1
   }
 ];
 
@@ -629,18 +634,133 @@ export const getRecentActivities = async (limitCount = 20) => {
 };
 
 // --- CHATBOT LOGS ---
-export const logChatbotMessage = async (sessionId, queryText, replyText) => {
+export const logChatbotMessage = async (sessionId, queryText, replyText, matchedQuestion = '', isFallback = false) => {
   try {
     const logDoc = {
       sessionId,
       query: queryText,
       reply: replyText,
+      matchedQuestion,
+      isFallback,
       timestamp: new Date().toISOString()
     };
     await addDoc(collection(db, 'chatbotLogs'), logDoc);
   } catch (e) {
     console.error("Failed to log chatbot message", e);
   }
+};
+
+// --- CHATBOT KNOWLEDGE BASE ---
+export const FALLBACK_CHATBOT_KB = [
+  {
+    id: 'seed-1',
+    question: "What does JSR Annamayya do?",
+    keywords: ["who is he", "what does he do", "role", "profession"],
+    answer: "JSR Annamayya is a National Award-Winning Behaviour Change & IEC Specialist with 9+ years leading solid waste management, environmental sustainability, and public systems reform across Andhra Pradesh and Telangana.",
+    link: "#about"
+  },
+  {
+    id: 'seed-2',
+    question: "Tell me about his career journey.",
+    keywords: ["career", "background", "experience", "work history", "journey"],
+    answer: "He started as a Gold Medalist in Electrical & Electronics Engineering, led teams at Wipro and Accenture, then moved into public service — working across four municipal corporations before his current role at Council for Green Revolution.",
+    link: "#experience"
+  },
+  {
+    id: 'seed-3',
+    question: "What awards has he won?",
+    keywords: ["awards", "recognition", "honors", "achievements"],
+    answer: "His recognitions include the Vande Bharat Puraskar (2023), National Youth Icon Award (2022), Indian Star Icon Award (2021), Best Government Service Award, and a Gold Medal from Tirumala Engineering College, among others.",
+    link: "#impact"
+  },
+  {
+    id: 'seed-4',
+    question: "Tell me about Swachh Bharat / cleanliness campaigns.",
+    keywords: ["swachh bharat", "swachh survekshan", "cleanliness", "ranking", "sanitation"],
+    answer: "As an IEC Specialist across Andhra Pradesh's municipal administrations, he led citizen engagement and IEC strategy that contributed to major Swachh Survekshan ranking improvements and Garbage Free City progress.",
+    link: "#case-studies"
+  },
+  {
+    id: 'seed-5',
+    question: "What is the \"Any Time Bag\" / ATB?",
+    keywords: ["any time bag", "atb", "cloth bag", "vending machine", "plastic"],
+    answer: "The Any Time Bag (ATB) is a solar-powered cloth bag vending machine he conceptualised — a UN-recognised innovation that gives shoppers a plastic-free alternative at the exact point of purchase.",
+    link: "#case-studies"
+  },
+  {
+    id: 'seed-6',
+    question: "What services does he offer?",
+    keywords: ["services", "consulting", "hire", "work with him", "offerings"],
+    answer: "He offers Behaviour Change Communication strategy, IEC campaign design, waste management consulting, climate action program design, capacity building, government training, public speaking, CSR advisory, and policy support.",
+    link: "#services"
+  },
+  {
+    id: 'seed-7',
+    question: "How can I contact him?",
+    keywords: ["contact", "reach him", "email", "phone", "get in touch", "collaborate"],
+    answer: "You can reach out directly through the contact form, email, or LinkedIn — I can pull those up for you right now.",
+    link: "#contact"
+  },
+  {
+    id: 'seed-8',
+    question: "What is Checkcovidnow / Arogya Setu?",
+    keywords: ["checkcovidnow", "arogya setu", "covid app", "innovation"],
+    answer: "Checkcovidnow was recognised as the first rapid COVID-19 detection web app in Telangana — JSR is its founder.",
+    link: "#about"
+  },
+  {
+    id: 'seed-9',
+    question: "What government departments has he worked with?",
+    keywords: ["government departments", "collaborations", "ministries", "GHMC"],
+    answer: "He's worked alongside the Government of Andhra Pradesh, Government of Telangana, GHMC, the Telangana Biodiversity Board, the Forest Department, and both School and Higher Education departments, among others.",
+    link: "#collaborations"
+  },
+  {
+    id: 'seed-10',
+    question: "Where did he study?",
+    keywords: ["education", "college", "degree", "university"],
+    answer: "He holds a B.Tech in Electrical & Electronics Engineering from Tirumala Engineering College (JNTUK), graduating as a Gold Medalist.",
+    link: "#about"
+  }
+];
+
+export const getChatbotKB = async () => {
+  try {
+    const snap = await getDocs(collection(db, 'chatbotKnowledgeBase'));
+    const list = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    return list.length > 0 ? list : FALLBACK_CHATBOT_KB;
+  } catch (e) {
+    console.warn("Failed to fetch chatbot knowledge base, using fallback:", e);
+    return FALLBACK_CHATBOT_KB;
+  }
+};
+
+export const addChatbotKBEntry = async (entry) => {
+  const docRef = await addDoc(collection(db, 'chatbotKnowledgeBase'), {
+    question: entry.question,
+    keywords: Array.isArray(entry.keywords) ? entry.keywords : String(entry.keywords).split(',').map(k => k.trim()).filter(Boolean),
+    answer: entry.answer,
+    link: entry.link || ''
+  });
+  await logSystemActivity('add_chatbot_faq', `Created FAQ: ${entry.question}`);
+  return docRef.id;
+};
+
+export const updateChatbotKBEntry = async (id, entry) => {
+  const docRef = doc(db, 'chatbotKnowledgeBase', id);
+  await updateDoc(docRef, {
+    question: entry.question,
+    keywords: Array.isArray(entry.keywords) ? entry.keywords : String(entry.keywords).split(',').map(k => k.trim()).filter(Boolean),
+    answer: entry.answer,
+    link: entry.link || ''
+  });
+  await logSystemActivity('update_chatbot_faq', `Updated FAQ: ${entry.question}`);
+};
+
+export const deleteChatbotKBEntry = async (id) => {
+  const docRef = doc(db, 'chatbotKnowledgeBase', id);
+  await deleteDoc(docRef);
+  await logSystemActivity('delete_chatbot_faq', `Deleted FAQ ID: ${id}`);
 };
 
 // --- SYSTEM AUDIT LOGS ---

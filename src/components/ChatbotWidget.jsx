@@ -1,29 +1,74 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCommentDots, FaPaperPlane, FaTimes, FaRobot } from 'react-icons/fa';
+import { FaCommentDots, FaPaperPlane, FaTimes, FaRobot, FaExternalLinkAlt, FaWhatsapp, FaEnvelope } from 'react-icons/fa';
+import Fuse from 'fuse.js';
+import { getChatbotKB, logChatbotMessage, logAnalyticsEvent } from '../services/portfolioService';
 
-const SUGGESTIONS = [
-  "Tell me about Swachh Bharat campaigns",
-  "What is the YELP climate initiative?",
-  "What awards has JSR received?",
-  "How to contact JSR Annamayya?"
-];
+const getSessionId = () => {
+  let id = sessionStorage.getItem('jsr_chat_session');
+  if (!id) {
+    id = 'session_' + Math.random().toString(36).substring(2, 9);
+    sessionStorage.setItem('jsr_chat_session', id);
+  }
+  return id;
+};
 
 const ChatbotWidget = () => {
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState([
-    { role: 'model', text: "Hello! I am JSR Annamayya's AI Assistant. Ask me anything about his career, projects, Swachh Bharat campaigns, or awards!" }
-  ]);
+  const [kbData, setKbData] = useState([]);
+  const [suggestions, setSuggestions] = useState([]);
+  const [messages, setMessages] = useState(() => {
+    const saved = localStorage.getItem('jsr_chat_history');
+    return saved ? JSON.parse(saved) : [
+      { 
+        role: 'model', 
+        text: "Hello! I am JSR Annamayya's AI Assistant. Ask me anything about his career, projects, Swachh Bharat campaigns, or awards!" 
+      }
+    ];
+  });
   const [input, setInput] = useState('');
   const [isTyping, setIsTyping] = useState(false);
   
   const scrollRef = useRef(null);
 
+  // Load Knowledge Base from service on mount
+  useEffect(() => {
+    const loadKB = async () => {
+      const kbList = await getChatbotKB();
+      setKbData(kbList || []);
+      
+      // Shuffle and pick 3 suggestions to display as chips
+      if (kbList && kbList.length > 0) {
+        const shuffled = [...kbList].sort(() => 0.5 - Math.random());
+        setSuggestions(shuffled.slice(0, 3).map(item => item.question));
+      }
+    };
+    loadKB();
+  }, []);
+
+  // Save chat history to localStorage
+  useEffect(() => {
+    localStorage.setItem('jsr_chat_history', JSON.stringify(messages));
+  }, [messages]);
+
+  // Scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
   }, [messages, isTyping]);
+
+  const handleLinkNavigate = (anchor) => {
+    // Standardise '#journey' to '#experience' if it slips through
+    const targetId = anchor === '#journey' ? 'experience' : anchor.replace('#', '');
+    const element = document.getElementById(targetId);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+      setIsOpen(false); // Close chatbot upon successful navigation
+    } else {
+      window.location.hash = anchor;
+    }
+  };
 
   const handleSend = async (textToSend) => {
     const msgText = textToSend || input;
@@ -35,33 +80,66 @@ const ChatbotWidget = () => {
     setInput('');
     setIsTyping(true);
 
-    try {
-      // Keep only last 6 messages to prevent context overflow in payload
-      const historyPayload = messages.slice(-6);
+    // Simulate natural response delay (600ms)
+    setTimeout(async () => {
+      let matchedEntry = null;
 
-      const response = await fetch('/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify({
-          message: msgText,
-          history: historyPayload
-        })
-      });
+      // 1. Fuzzy Search across KB using Fuse.js
+      if (kbData.length > 0) {
+        const fuse = new Fuse(kbData, {
+          keys: [
+            { name: 'question', weight: 0.6 },
+            { name: 'keywords', weight: 0.4 }
+          ],
+          threshold: 0.5,
+          includeScore: true
+        });
 
-      const data = await response.json();
-      if (data.success) {
-        setMessages(prev => [...prev, { role: 'model', text: data.reply }]);
-      } else {
-        setMessages(prev => [...prev, { role: 'model', text: "I'm sorry, I'm having trouble connecting to my brain right now. Please try again or fill in the contact form below!" }]);
+        const searchResults = fuse.search(msgText);
+        if (searchResults.length > 0 && searchResults[0].score <= 0.6) {
+          matchedEntry = searchResults[0].item;
+        }
       }
-    } catch (e) {
-      console.error(e);
-      setMessages(prev => [...prev, { role: 'model', text: "Oops! Something went wrong. Please check your internet connection and try again." }]);
-    } finally {
+
+      let botResponseMsg = {};
+      const sessionId = getSessionId();
+
+      if (matchedEntry) {
+        botResponseMsg = {
+          role: 'model',
+          text: matchedEntry.answer,
+          link: matchedEntry.link
+        };
+        // Log successful match
+        await logChatbotMessage(
+          sessionId, 
+          msgText, 
+          matchedEntry.answer, 
+          matchedEntry.question, 
+          false
+        );
+      } else {
+        botResponseMsg = {
+          role: 'model',
+          text: "I'm not sure about that specific detail, but I'd love to help you connect with JSR Annamayya. You can reach out directly via the options below!",
+          isFallback: true
+        };
+        // Log fallback match
+        await logChatbotMessage(
+          sessionId, 
+          msgText, 
+          botResponseMsg.text, 
+          'None', 
+          true
+        );
+      }
+
+      setMessages(prev => [...prev, botResponseMsg]);
       setIsTyping(false);
-    }
+
+      // Increment rollup query counter
+      logAnalyticsEvent({ type: 'chatbot_message' });
+    }, 600);
   };
 
   const handleKeyPress = (e) => {
@@ -70,11 +148,20 @@ const ChatbotWidget = () => {
     }
   };
 
+  const clearHistory = () => {
+    const defaultMsg = [
+      { 
+        role: 'model', 
+        text: "Hello! I am JSR Annamayya's AI Assistant. Ask me anything about his career, projects, Swachh Bharat campaigns, or awards!" 
+      }
+    ];
+    setMessages(defaultMsg);
+  };
+
   return (
     <div className="fixed z-50 font-sans">
       
       {/* Floating Toggle Button */}
-      {/* Positioned bottom-left on mobile (bottom-28 left-6) to balance Email/LinkedIn FABs on bottom-right, and bottom-right on desktop (bottom-8 right-24) */}
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.05 }}
@@ -111,9 +198,18 @@ const ChatbotWidget = () => {
                   </span>
                 </div>
               </div>
-              <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">
-                <FaTimes className="w-4 h-4" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={clearHistory} 
+                  title="Clear Chat"
+                  className="text-white/30 hover:text-white/70 text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded border border-white/10 transition-colors"
+                >
+                  Clear
+                </button>
+                <button onClick={() => setIsOpen(false)} className="text-white/40 hover:text-white transition-colors">
+                  <FaTimes className="w-4 h-4" />
+                </button>
+              </div>
             </div>
 
             {/* Messages Area */}
@@ -121,19 +217,55 @@ const ChatbotWidget = () => {
               {messages.map((msg, idx) => (
                 <div
                   key={idx}
-                  className={`flex flex-col max-w-[80%] ${msg.role === 'user' ? 'self-end text-right' : 'self-start text-left'}`}
+                  className={`flex flex-col max-w-[85%] ${msg.role === 'user' ? 'self-end text-right' : 'self-start text-left'}`}
                 >
                   <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest mb-1 px-1">
                     {msg.role === 'user' ? 'You' : 'Assistant'}
                   </span>
                   <div
-                    className={`p-3.5 rounded-2xl text-xs font-medium leading-relaxed ${
+                    className={`p-3.5 rounded-2xl text-xs font-medium leading-relaxed whitespace-pre-line ${
                       msg.role === 'user'
                         ? 'bg-primary text-white rounded-tr-none'
                         : 'bg-[#25221F] text-white/95 rounded-tl-none border border-white/5'
                     }`}
                   >
                     {msg.text}
+
+                    {/* Navigational anchor chip */}
+                    {msg.link && (
+                      <button
+                        onClick={() => handleLinkNavigate(msg.link)}
+                        className="mt-2.5 text-[10px] font-black text-secondary hover:text-primary bg-[#2d2824]/90 border border-secondary/25 hover:border-secondary/60 px-3 py-1.5 rounded-full flex items-center gap-1.5 transition-all w-fit shadow-sm"
+                      >
+                        Explore Details <FaExternalLinkAlt className="w-2.5 h-2.5" />
+                      </button>
+                    )}
+
+                    {/* Fallback Action Chips */}
+                    {msg.isFallback && (
+                      <div className="mt-3 flex flex-col gap-2 border-t border-white/5 pt-2.5">
+                        <button
+                          onClick={() => handleLinkNavigate('#contact')}
+                          className="text-[10px] font-black text-secondary hover:text-primary bg-[#2d2824]/90 border border-secondary/25 hover:border-secondary/60 px-3 py-1.5 rounded-full flex items-center gap-2 transition-all w-full text-left"
+                        >
+                          <FaEnvelope className="w-3 h-3 text-secondary" /> Fill Contact Form
+                        </button>
+                        <a
+                          href="https://wa.me/919908861217"
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[10px] font-black text-green-400 hover:text-green-300 bg-[#2d2824]/90 border border-green-500/20 hover:border-green-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 transition-all w-full"
+                        >
+                          <FaWhatsapp className="w-3 h-3 text-green-400" /> Chat on WhatsApp
+                        </a>
+                        <a
+                          href="mailto:jsr.annamayya@gmail.com"
+                          className="text-[10px] font-black text-blue-400 hover:text-blue-300 bg-[#2d2824]/90 border border-blue-500/20 hover:border-blue-500/50 px-3 py-1.5 rounded-full flex items-center gap-2 transition-all w-full"
+                        >
+                          <FaEnvelope className="w-3 h-3 text-blue-400" /> Send Email
+                        </a>
+                      </div>
+                    )}
                   </div>
                 </div>
               ))}
@@ -153,17 +285,20 @@ const ChatbotWidget = () => {
             </div>
 
             {/* Suggestions Chips */}
-            {messages.length === 1 && !isTyping && (
-              <div className="px-5 pb-3 flex flex-wrap gap-2 justify-start">
-                {SUGGESTIONS.map((sug, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSend(sug)}
-                    className="text-[10px] font-bold text-secondary bg-[#2d2824]/80 border border-secondary/25 hover:border-secondary/60 hover:bg-[#2d2824] px-3 py-1.5 rounded-full transition-all text-left"
-                  >
-                    {sug}
-                  </button>
-                ))}
+            {suggestions.length > 0 && !isTyping && (
+              <div className="px-5 pb-3 flex flex-col gap-1.5 justify-start">
+                <span className="text-[8px] font-black text-white/30 uppercase tracking-wider block mb-0.5">Quick Suggestions</span>
+                <div className="flex flex-wrap gap-2">
+                  {suggestions.map((sug, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => handleSend(sug)}
+                      className="text-[10px] font-bold text-secondary bg-[#2d2824]/80 border border-secondary/25 hover:border-secondary/60 hover:bg-[#2d2824] px-3 py-1.5 rounded-full transition-all text-left"
+                    >
+                      {sug}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
 

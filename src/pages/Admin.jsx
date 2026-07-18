@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation, NavLink } from 'react-router-dom';
 import { 
   getHeroContent, updateHeroContent,
   getHeroSlides, saveHeroSlide, deleteHeroSlide,
@@ -19,7 +19,8 @@ import {
   getHighlights, saveHighlight, deleteHighlight,
   getInnovations, saveInnovation, deleteInnovation,
   getAnalyticsSummary, getRecentActivities, getSystemLogs,
-  logSystemActivity
+  logSystemActivity,
+  getChatbotKB, addChatbotKBEntry, updateChatbotKBEntry, deleteChatbotKBEntry
 } from '../services/portfolioService';
 import { uploadToImgBB, validateVideoFile, compressVideo } from '../utils/compressor';
 import { 
@@ -28,7 +29,8 @@ import {
   FaInfoCircle, FaTrophy, FaChevronRight, FaEnvelope, FaCog,
   FaQuoteLeft, FaNewspaper, FaFilePdf, FaChartBar, FaUserCheck,
   FaMobileAlt, FaDesktop, FaTabletAlt, FaGlobe, FaVolumeMute, FaVolumeUp,
-  FaCommentDots, FaBuilding, FaBookOpen, FaStar, FaLightbulb, FaBars, FaTimes, FaFlask
+  FaCommentDots, FaBuilding, FaBookOpen, FaStar, FaLightbulb, FaBars, FaTimes, FaFlask,
+  FaRobot
 } from 'react-icons/fa';
 import { auth, storage, db } from '../firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
@@ -67,7 +69,36 @@ const Admin = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [authError, setAuthError] = useState('');
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const location = useLocation();
+  const tabsConfig = [
+    { id: 'dashboard', path: 'dashboard', label: 'Dashboard', icon: <FaChartBar /> },
+    { id: 'hero', path: 'hero-slides', label: 'Hero Slides', icon: <FaInfoCircle /> },
+    { id: 'about', path: 'about-strengths', label: 'About & Strengths', icon: <FaAward /> },
+    { id: 'services', path: 'services', label: 'Services Offered', icon: <FaLightbulb /> },
+    { id: 'innovations', path: 'innovations-tech', label: 'Innovations & Tech', icon: <FaFlask /> },
+    { id: 'departments', path: 'collaborations', label: 'Collaborations', icon: <FaBuilding /> },
+    { id: 'timeline', path: 'career-journey', label: 'Career Journey', icon: <FaHistory /> },
+    { id: 'caseStudies', path: 'case-studies', label: 'Case Studies', icon: <FaBookOpen /> },
+    { id: 'highlights', path: 'career-highlights', label: 'Career Highlights', icon: <FaStar /> },
+    { id: 'testimonials', path: 'testimonials', label: 'Testimonials', icon: <FaQuoteLeft /> },
+    { id: 'press', path: 'press-coverage', label: 'Press Coverage', icon: <FaNewspaper /> },
+    { id: 'awards', path: 'impact-awards', label: 'Impact & Awards', icon: <FaTrophy /> },
+    { id: 'gallery', path: 'photo-gallery', label: 'Photo Gallery', icon: <FaImage /> },
+    { id: 'chatbot', path: 'chatbot', label: 'Chatbot FAQ', icon: <FaRobot /> },
+    { id: 'settings', path: 'general-footer', label: 'General / Footer', icon: <FaCog /> },
+    { id: 'messages', path: 'messages', label: 'Contact Messages', icon: <FaEnvelope /> }
+  ];
+
+  const currentSubPath = location.pathname.replace(/^\/admin\/?/, '');
+  const matchingTab = tabsConfig.find(t => t.path === currentSubPath) || tabsConfig[0];
+  const activeTab = matchingTab.id;
+
+  useEffect(() => {
+    if (isAuthenticated && (location.pathname === '/admin' || location.pathname === '/admin/')) {
+      navigate('/admin/dashboard', { replace: true });
+    }
+  }, [location.pathname, isAuthenticated, navigate]);
+
   const [loading, setLoading] = useState(false);
   
   // Mobile & Image Preview States
@@ -114,6 +145,7 @@ const Admin = () => {
   const [awards, setAwards] = useState([]);
   const [gallery, setGallery] = useState([]);
   const [innovations, setInnovations] = useState([]);
+  const [chatbotKB, setChatbotKB] = useState([]);
 
   // Dynamic content extensions
   const [talks, setTalks] = useState([]);
@@ -253,6 +285,7 @@ const Admin = () => {
       const ms = await getContactMessages();
       const ts = await getTestimonials();
       const pc = await getPressCoverage();
+      const cb = await getChatbotKB();
       const summary = await getAnalyticsSummary();
       const recent = await getRecentActivities();
       const logs = await getSystemLogs();
@@ -274,6 +307,7 @@ const Admin = () => {
       setMessages(ms);
       setTestimonials(ts);
       setPressCoverage(pc);
+      setChatbotKB(cb || []);
       setAnalyticsSummary(summary || []);
       setRecentActivities(recent || []);
       setSystemLogsList(logs || []);
@@ -522,6 +556,7 @@ const Admin = () => {
     if (type === 'caseStudies') return caseStudies;
     if (type === 'highlights') return highlights;
     if (type === 'innovations') return innovations;
+    if (type === 'chatbot') return chatbotKB;
     return [];
   };
 
@@ -781,36 +816,22 @@ const Admin = () => {
           </div>
 
           <nav className="flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto pr-1">
-            {[
-              { id: 'dashboard', label: 'Dashboard', icon: <FaChartBar /> },
-              { id: 'hero', label: 'Hero Slides', icon: <FaInfoCircle /> },
-              { id: 'about', label: 'About & Strengths', icon: <FaAward /> },
-              { id: 'services', label: 'Services Offered', icon: <FaLightbulb /> },
-              { id: 'innovations', label: 'Innovations & Tech', icon: <FaFlask /> },
-              { id: 'departments', label: 'Collaborations', icon: <FaBuilding /> },
-              { id: 'timeline', label: 'Career Journey', icon: <FaHistory /> },
-              { id: 'caseStudies', label: 'Case Studies', icon: <FaBookOpen /> },
-              { id: 'highlights', label: 'Career Highlights', icon: <FaStar /> },
-              { id: 'testimonials', label: 'Testimonials', icon: <FaQuoteLeft /> },
-              { id: 'press', label: 'Press Coverage', icon: <FaNewspaper /> },
-              { id: 'awards', label: 'Impact & Awards', icon: <FaTrophy /> },
-              { id: 'gallery', label: 'Photo Gallery', icon: <FaImage /> },
-              { id: 'settings', label: 'General / Footer', icon: <FaCog /> },
-              { id: 'messages', label: 'Contact Messages', icon: <FaEnvelope /> }
-            ].map(tab => (
-              <button 
+            {tabsConfig.map(tab => (
+              <NavLink 
                 key={tab.id}
+                to={`/admin/${tab.path}`}
                 onClick={() => { 
-                  setActiveTab(tab.id); 
                   setEditingItem(null); 
                   if (tab.id === 'messages') setUnreadCount(0); 
                   setIsMobileMenuOpen(false);
                 }}
-                className={`w-full py-2 px-3.5 rounded-xl font-bold text-[11px] flex items-center gap-2.5 transition-all ${
-                  activeTab === tab.id 
-                    ? 'bg-primary text-white shadow-md' 
-                    : 'text-white/60 hover:text-white hover:bg-white/5'
-                }`}
+                className={({ isActive }) => 
+                  `w-full py-2 px-3.5 rounded-xl font-bold text-[11px] flex items-center gap-2.5 transition-all ${
+                    isActive 
+                      ? 'bg-primary text-white shadow-md' 
+                      : 'text-white/60 hover:text-white hover:bg-white/5'
+                  }`
+                }
               >
                 {tab.icon}
                 <span className="flex-1 text-left">{tab.label}</span>
@@ -819,7 +840,7 @@ const Admin = () => {
                     {unreadCount}
                   </span>
                 )}
-              </button>
+              </NavLink>
             ))}
           </nav>
         </div>
@@ -1500,10 +1521,10 @@ const Admin = () => {
             <div className="flex justify-between items-center bg-white p-6 rounded-[1.5rem] border border-gray-200 shadow-sm">
               <div>
                 <h2 className="text-xl font-black text-charcoal">Career Timeline Stops</h2>
-                <p className="text-xs text-neutraltext font-medium mt-1">Manage reverse-chronological career timeline cards.</p>
+                <p className="text-xs text-neutraltext font-medium mt-1">Manage career timeline cards with custom ordering (oldest to newest).</p>
               </div>
               <button 
-                onClick={() => setEditingItem({ type: 'timeline', data: { number: '', title: '', subtitle: '', text: '' } })}
+                onClick={() => setEditingItem({ type: 'timeline', number: '', title: '', subtitle: '', text: '', order: timeline.length + 1 })}
                 className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-full shadow-md flex items-center gap-2"
               >
                 <FaPlus /> Add Timeline Stop
@@ -1515,7 +1536,7 @@ const Admin = () => {
               <div className="bg-white p-8 rounded-[2rem] border border-secondary/30 shadow-md">
                 <h3 className="text-lg font-black mb-6">{editingItem.id ? 'Edit Stop' : 'Create Timeline Stop'}</h3>
                 <form onSubmit={(e) => handleSaveItem(e, 'timeline', saveTimelineStop)} className="flex flex-col gap-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4">
                     <div className="flex flex-col gap-1">
                       <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Date Range *</label>
                       <input 
@@ -1534,6 +1555,13 @@ const Admin = () => {
                       <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Role/Title *</label>
                       <input 
                         type="text" required name="subtitle" defaultValue={editingItem.subtitle} placeholder="e.g. Assistant Director"
+                        className="bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Order *</label>
+                      <input 
+                        type="number" required name="order" defaultValue={editingItem.order ?? (timeline.length + 1)} placeholder="e.g. 1"
                         className="bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
                       />
                     </div>
@@ -1558,7 +1586,10 @@ const Admin = () => {
               {timeline.map((stop, idx) => (
                 <div key={stop.id || idx} className="bg-white p-6 rounded-2xl border border-gray-200 flex justify-between items-center shadow-sm">
                   <div>
-                    <span className="text-[10px] font-bold font-mono text-primary bg-primary/5 px-3 py-1 rounded-full uppercase tracking-wider">{stop.number}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-[10px] font-bold font-mono text-primary bg-primary/5 px-3 py-1 rounded-full uppercase tracking-wider">{stop.number}</span>
+                      <span className="text-[10px] font-mono text-neutraltext">Order: {stop.order ?? idx + 1}</span>
+                    </div>
                     <h3 className="text-base font-black text-charcoal mt-2">{stop.title}</h3>
                     <h4 className="text-xs font-bold text-secondary uppercase tracking-wide">{stop.subtitle}</h4>
                     <p className="text-xs text-neutraltext font-medium mt-2 max-w-2xl leading-relaxed">{stop.text}</p>
@@ -2729,6 +2760,137 @@ const Admin = () => {
           </div>
         )}
 
+        {/* Chatbot Knowledge Base Management */}
+        {activeTab === 'chatbot' && (
+          <div className="flex flex-col gap-8 w-full">
+            <div className="flex justify-between items-center bg-white p-6 md:p-8 rounded-[1.5rem] border border-gray-200 shadow-sm flex-wrap gap-4">
+              <div>
+                <h2 className="text-xl font-black text-charcoal flex items-center gap-2">
+                  <FaRobot className="text-secondary" /> Chatbot Knowledge Base (FAQ)
+                </h2>
+                <p className="text-xs text-neutraltext font-medium mt-1">
+                  Manage the questions, keywords, and answers that the JSR Assistant uses to match user queries locally.
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingItem({ type: 'chatbot', data: { question: '', keywords: '', answer: '', link: '' } })}
+                className="px-5 py-2.5 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-full shadow-md flex items-center gap-2 transition-all"
+              >
+                <FaPlus /> Add New FAQ
+              </button>
+            </div>
+
+            {editingItem && editingItem.type === 'chatbot' && (
+              <div className="bg-white p-8 rounded-[2rem] border border-secondary/35 shadow-md">
+                <h3 className="text-lg font-black mb-6">{editingItem.data.id ? 'Edit FAQ Entry' : 'Create FAQ Entry'}</h3>
+                <form 
+                  onSubmit={(e) => handleSaveItem(e, 'chatbot', editingItem.data.id ? (data) => updateChatbotKBEntry(editingItem.data.id, data) : addChatbotKBEntry)} 
+                  className="flex flex-col gap-5"
+                >
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Primary Question *</label>
+                    <input 
+                      type="text" required name="question" defaultValue={editingItem.data.question} placeholder="e.g. What does JSR Annamayya do?"
+                      className="bg-offwhite/50 border border-gray-200 rounded-xl p-3.5 text-xs focus:outline-none focus:border-primary font-medium"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Keywords (Comma Separated) *</label>
+                    <input 
+                      type="text" required name="keywords" defaultValue={editingItem.data.keywords} placeholder="e.g. who is he, what does he do, role, profession"
+                      className="bg-offwhite/50 border border-gray-200 rounded-xl p-3.5 text-xs focus:outline-none focus:border-primary font-medium"
+                    />
+                    <p className="text-[9px] text-neutraltext font-medium mt-1">Fuzzy search matches these words/phrases to trigger this answer.</p>
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Answer Content *</label>
+                    <textarea 
+                      required name="answer" defaultValue={editingItem.data.answer} rows={4} placeholder="Write the answer that the chatbot will display..."
+                      className="bg-offwhite/50 border border-gray-200 rounded-xl p-3.5 text-xs focus:outline-none focus:border-primary leading-relaxed font-medium"
+                    />
+                  </div>
+
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Optional Section Anchor Link</label>
+                    <select 
+                      name="link" defaultValue={editingItem.data.link || ''}
+                      className="bg-offwhite/50 border border-gray-200 rounded-xl p-3.5 text-xs focus:outline-none focus:border-primary font-bold text-neutraltext"
+                    >
+                      <option value="">None</option>
+                      <option value="#about">About (#about)</option>
+                      <option value="#experience">Career Journey (#experience)</option>
+                      <option value="#impact">Impact & Awards (#impact)</option>
+                      <option value="#case-studies">Case Studies (#case-studies)</option>
+                      <option value="#services">Services Offered (#services)</option>
+                      <option value="#collaborations">Collaborations (#collaborations)</option>
+                      <option value="#highlights">Highlights (#highlights)</option>
+                      <option value="#contact">Contact (#contact)</option>
+                    </select>
+                    <p className="text-[9px] text-neutraltext font-medium mt-1">Surfaces a call-to-action button in the chat bubbles to scroll the user to this page anchor.</p>
+                  </div>
+
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2.5 rounded-full border border-gray-200 text-xs font-bold transition-all">Cancel</button>
+                    <AdminSaveButton loading={loading} label="Save FAQ Entry" />
+                  </div>
+                </form>
+              </div>
+            )}
+
+            <div className="bg-white rounded-[2rem] border border-gray-200 overflow-hidden shadow-sm">
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-left text-xs font-sans">
+                  <thead className="bg-gray-50 text-neutraltext font-black uppercase tracking-wider">
+                    <tr>
+                      <th className="px-6 py-4">Question</th>
+                      <th className="px-6 py-4">Keywords</th>
+                      <th className="px-6 py-4">Answer</th>
+                      <th className="px-6 py-4">Link</th>
+                      <th className="px-6 py-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-gray-100 bg-white">
+                    {chatbotKB.map((entry) => (
+                      <tr key={entry.id} className="hover:bg-gray-50/50">
+                        <td className="px-6 py-4 font-black text-charcoal max-w-[200px] truncate">{entry.question}</td>
+                        <td className="px-6 py-4">
+                          <div className="flex flex-wrap gap-1">
+                            {entry.keywords && entry.keywords.map((kw, i) => (
+                              <span key={i} className="px-2 py-0.5 bg-secondary/15 text-secondary border border-secondary/30 font-bold rounded text-[9px] uppercase tracking-wider">{kw}</span>
+                            ))}
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-neutraltext max-w-[300px] truncate leading-relaxed">{entry.answer}</td>
+                        <td className="px-6 py-4 font-bold text-[#E8A33D]">{entry.link || 'None'}</td>
+                        <td className="px-6 py-4 text-right whitespace-nowrap">
+                          <div className="flex items-center justify-end gap-2">
+                            <button
+                              onClick={() => setEditingItem({ type: 'chatbot', data: { ...entry, keywords: Array.isArray(entry.keywords) ? entry.keywords.join(', ') : entry.keywords } })}
+                              className="p-2.5 bg-gray-50 hover:bg-[#E8A33D]/10 text-charcoal hover:text-[#E8A33D] rounded-xl transition-colors border border-gray-100"
+                              title="Edit FAQ"
+                            >
+                              <FaEdit className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteItem(entry.id, deleteChatbotKBEntry)}
+                              className="p-2.5 bg-gray-50 hover:bg-red-50 text-red-600 hover:bg-red-600 hover:text-white rounded-xl transition-all border border-gray-100"
+                              title="Delete FAQ"
+                            >
+                              <FaTrash className="w-3.5 h-3.5" />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+
       </main>
 
       {/* Real-time Notification Toast Overlay */}
@@ -2744,7 +2906,7 @@ const Admin = () => {
             <p className="text-xs text-white/70 mt-2 line-clamp-2 leading-relaxed bg-white/5 p-2.5 rounded-lg">{toastMessage.message}</p>
           </div>
           <button 
-            onClick={() => { setActiveTab('messages'); setUnreadCount(0); setShowToast(false); }}
+            onClick={() => { navigate('/admin/messages'); setUnreadCount(0); setShowToast(false); }}
             className="w-full py-2 bg-primary hover:bg-primary/95 text-white font-bold text-xs rounded-xl shadow-md transition-all uppercase tracking-wider"
           >
             View in Messages

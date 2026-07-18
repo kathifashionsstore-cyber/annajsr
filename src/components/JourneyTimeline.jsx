@@ -72,6 +72,7 @@ const TagCard = ({ number, title, subtitle, text, className, style, aosDelay, ao
 const JourneyTimeline = () => {
   const containerRef = useRef(null);
   const [timelineStops, setTimelineStops] = useState([]);
+  const [isMobile, setIsMobile] = useState(false);
   
   const { scrollYProgress } = useScroll({
     target: containerRef,
@@ -81,11 +82,23 @@ const JourneyTimeline = () => {
   const pathLength = useSpring(scrollYProgress, { stiffness: 60, damping: 20, restDelta: 0.001 });
 
   useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  useEffect(() => {
     const fetchTimeline = async () => {
       const stops = await getTimelineStops();
       if (Array.isArray(stops)) {
         // Ensure chronological ordering (oldest first: order 1 -> 5)
-        setTimelineStops(stops.sort((a, b) => (a.order || 0) - (b.order || 0)));
+        const sorted = [...stops].sort((a, b) => {
+          const diff = (a.order || 0) - (b.order || 0);
+          if (diff !== 0) return diff;
+          return (a.number || '').localeCompare(b.number || '');
+        });
+        setTimelineStops(sorted);
       }
     };
     fetchTimeline();
@@ -101,7 +114,7 @@ const JourneyTimeline = () => {
     >
       <div 
         className="max-w-6xl mx-auto relative" 
-        style={{ minHeight: `${desktopHeight}px` }}
+        style={{ minHeight: isMobile ? 'auto' : `${desktopHeight}px` }}
       >
         
         {/* Header Content */}
@@ -237,32 +250,36 @@ const JourneyTimeline = () => {
             );
           })}
 
-          {timelineStops.length > 0 && (
-            <div 
-              data-aos="fade-up" 
-              className="w-full max-w-3xl px-6 text-center mx-auto mt-16 md:mt-0 md:absolute md:left-1/2 md:-translate-x-1/2 flex flex-col items-center justify-center"
-              style={{ top: `${50 + timelineStops.length * 340}px` }}
-            >
-              <div className="w-16 h-[2px] bg-primary/20 mb-6"></div>
-              <p className="text-sm sm:text-base md:text-lg font-semibold text-neutraltext italic leading-relaxed font-sans max-w-2xl">
-                "I never set out to change how a city breathes, or how a family teaches its children to care for the earth — I only wanted to build things that mattered. What began as circuits and classrooms slowly turned into conversations with sanitation workers, mothers, students, and officers who believed, like I did, that small daily habits could rewrite a community's future. Every step since has been guided by one quiet conviction: real change doesn't arrive with announcements. It arrives one person, one habit, one act of care at a time."
-              </p>
-              <div className="w-16 h-[2px] bg-primary/20 mt-6"></div>
-            </div>
-          )}
-
-          {timelineStops.length > 0 && (
-            <div 
-              data-aos="fade-in" 
-              data-aos-delay="400"
-              className="font-serif italic text-xl md:text-2xl text-primary font-bold mt-12 md:mt-0 md:absolute rotate-1 text-center w-full"
-              style={{ top: `${50 + timelineStops.length * 340 + 240}px`, left: '0px' }}
-            >
-              Ready for what's next!
-            </div>
-          )}
         </div>
       </div>
+
+      {/* Footer CTA & Quote Section (Static Flow to prevent overlap) */}
+      {timelineStops.length > 0 && (
+        <div className="max-w-4xl mx-auto mt-20 md:mt-28 px-6 flex flex-col items-center justify-center relative z-10 text-center">
+          
+          {/* CTA "Ready for what's next!" */}
+          <div 
+            data-aos="fade-in" 
+            data-aos-delay="200"
+            className="font-serif italic text-2xl md:text-3xl text-primary font-bold mb-10 rotate-1"
+          >
+            Ready for what's next!
+          </div>
+
+          {/* Quote Container */}
+          <div 
+            data-aos="fade-up" 
+            className="w-full flex flex-col items-center justify-center mt-6"
+          >
+            <div className="w-16 h-[2px] bg-primary/20 mb-6"></div>
+            <p className="text-sm sm:text-base md:text-lg font-semibold text-neutraltext italic leading-relaxed font-sans max-w-2xl">
+              "I never set out to change how a city breathes, or how a family teaches its children to care for the earth — I only wanted to build things that mattered. What began as circuits and classrooms slowly turned into conversations with sanitation workers, mothers, students, and officers who believed, like I did, that small daily habits could rewrite a community's future. Every step since has been guided by one quiet conviction: real change doesn't arrive with announcements. It arrives one person, one habit, one act of care at a time."
+            </p>
+            <div className="w-16 h-[2px] bg-primary/20 mt-6"></div>
+          </div>
+
+        </div>
+      )}
     </section>
   );
 };

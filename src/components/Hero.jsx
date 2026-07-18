@@ -22,6 +22,18 @@ const Hero = () => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
+
+  useEffect(() => {
+    const checkMobile = () => setIsMobile(window.innerWidth < 768);
+    checkMobile();
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
+  // Extract all valid, non-empty image URLs from the fetched slides list
+  const adminImages = slides.map(s => s.imageUrl).filter(Boolean);
+  const imagesToUse = adminImages.length > 0 ? adminImages : fallbackImages;
 
   useEffect(() => {
     AOS.init({
@@ -46,14 +58,14 @@ const Hero = () => {
     return () => clearInterval(timer);
   }, [isHovered, slides.length]);
 
-  // Autoplay for Images (5 seconds)
+  // Autoplay for Images (2 seconds)
   useEffect(() => {
-    if (isHovered || fallbackImages.length <= 1) return;
+    if (isHovered || imagesToUse.length <= 1) return;
     const imgTimer = setInterval(() => {
-      setCurrentImageIndex((prev) => (prev + 1) % fallbackImages.length);
-    }, 5000); // 5 seconds auto-advance for background images
+      setCurrentImageIndex((prev) => (prev + 1) % imagesToUse.length);
+    }, 2000); // 2 seconds auto-advance for background images
     return () => clearInterval(imgTimer);
-  }, [isHovered]);
+  }, [isHovered, imagesToUse.length]);
 
   const handleDotClick = (idx) => {
     setCurrentIndex(idx);
@@ -103,7 +115,9 @@ const Hero = () => {
     );
   };
 
-  const activeImageUrl = activeSlide.imageUrl || fallbackImages[currentImageIndex];
+  const activeImageUrl = imagesToUse[currentImageIndex % imagesToUse.length];
+  const secondImageUrl = imagesToUse[(currentImageIndex + 1) % imagesToUse.length];
+  const bottomImageUrl = isMobile ? secondImageUrl : activeImageUrl;
 
   return (
     <section 
@@ -119,6 +133,30 @@ const Hero = () => {
 
       <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-16 items-center relative z-10">
         
+        {/* Mobile Top Rotating Image: Sandwich top layer */}
+        <div 
+          className="md:hidden w-full flex justify-center items-center py-2 mb-2"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsHovered(true)}
+          onTouchEnd={() => setIsHovered(false)}
+        >
+          <div className="relative w-full max-w-[280px] aspect-[4/3] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.5)] bg-[#2a2622]">
+            <AnimatePresence mode="wait">
+              <motion.img
+                key={currentImageIndex}
+                src={activeImageUrl}
+                alt="JSR Annamayya Showcase Top"
+                initial={{ opacity: 0, scale: 1.05 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.5 }}
+                className="w-full h-full object-cover filter brightness-95"
+              />
+            </AnimatePresence>
+          </div>
+        </div>
+
         {/* Left Column: Rich Typography Text Block */}
         <div 
           className="flex-1 text-white text-left select-none z-10"
@@ -200,7 +238,7 @@ const Hero = () => {
               <AnimatePresence mode="wait">
                 <motion.img
                   key={currentImageIndex}
-                  src={activeImageUrl}
+                  src={bottomImageUrl}
                   alt="Backdrop glow copy"
                   className="w-full h-full object-cover"
                   initial={{ opacity: 0 }}
@@ -220,7 +258,7 @@ const Hero = () => {
                 <AnimatePresence mode="wait">
                   <motion.img
                     key={currentImageIndex}
-                    src={activeImageUrl}
+                    src={bottomImageUrl}
                     alt="JSR Annamayya Showcase slide"
                     initial={{ opacity: 0, scale: 1.08 }}
                     animate={{ opacity: 1, scale: 1 }}

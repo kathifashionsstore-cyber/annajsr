@@ -72,6 +72,16 @@ service cloud.firestore {
       allow read, create, update, delete: if isAdmin();
     }
 
+    match /chatbotLogs/{document} {
+      allow create: if true;
+      allow read, update, delete: if isAdmin();
+    }
+
+    match /chatbotKnowledgeBase/{document} {
+      allow read: if true;
+      allow write: if isAdmin();
+    }
+
     match /systemLogs/{document} {
       allow read, create, update, delete: if isAdmin();
     }
