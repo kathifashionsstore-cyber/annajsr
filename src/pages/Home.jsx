@@ -6,12 +6,12 @@ import About from '../components/About';
 import JourneyTimeline from '../components/JourneyTimeline';
 import VideoReels from '../components/VideoReels';
 import Services from '../components/Services';
+import VisualJourney from '../components/VisualJourney';
 import Departments from '../components/Departments';
 import CaseStudies from '../components/CaseStudies';
 import CareerHighlights from '../components/CareerHighlights';
 import ImpactAndAwards from '../components/ImpactAndAwards';
 import Testimonials from '../components/Testimonials';
-import ResumeSection from '../components/ResumeSection';
 import Contact from '../components/Contact';
 import Footer from '../components/Footer';
 import MobileBottomNav from '../components/MobileBottomNav';
@@ -20,8 +20,6 @@ import ChatbotWidget from '../components/ChatbotWidget';
 import { logAnalyticsEvent } from '../services/portfolioService';
 
 const Home = () => {
-  const [isGalleryOpen, setIsGalleryOpen] = useState(false);
-
   useEffect(() => {
     // Detect basic device telemetry
     const userAgent = navigator.userAgent;
@@ -57,23 +55,23 @@ const Home = () => {
   return (
     <>
       <Preloader />
-      <Navbar onGalleryClick={() => setIsGalleryOpen(true)} />
-      <Hero isGalleryOpen={isGalleryOpen} setIsGalleryOpen={setIsGalleryOpen} />
+      <Navbar />
+      <Hero />
       <About />
       <JourneyTimeline />
       <VideoReels />
+      <VisualJourney />
       <Services />
       <Departments />
       <CaseStudies />
       <CareerHighlights />
       <ImpactAndAwards />
       <Testimonials />
-      <ResumeSection />
       <Contact />
       <Footer />
       <FloatingActions />
       <ChatbotWidget />
-      <MobileBottomNav onGalleryClick={() => setIsGalleryOpen(true)} />
+      <MobileBottomNav />
     </>
   );
 };

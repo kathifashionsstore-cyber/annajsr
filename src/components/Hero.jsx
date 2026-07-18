@@ -2,7 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import AOS from 'aos';
 import 'aos/dist/aos.css';
-import { getHeroSlides, getGalleryImages, logAnalyticsEvent } from '../services/portfolioService';
+import { getHeroSlides, logAnalyticsEvent } from '../services/portfolioService';
+import { FaAward, FaCalendarCheck } from 'react-icons/fa';
 
 // Fallback images
 import slideImg1 from '../assets/gallery/gallery_2.jpeg'; // NSE Mumbai Presentation
@@ -16,11 +17,10 @@ import slideImg8 from '../assets/gallery/gallery_20.jpeg'; // National Youth Ico
 
 const fallbackImages = [slideImg1, slideImg2, slideImg3, slideImg4, slideImg5, slideImg6, slideImg7, slideImg8];
 
-const Hero = ({ isGalleryOpen, setIsGalleryOpen }) => {
+const Hero = () => {
   const [slides, setSlides] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [gallery, setGallery] = useState([]);
-  const [activePhotoIdx, setActivePhotoIdx] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
 
   useEffect(() => {
@@ -32,275 +32,246 @@ const Hero = ({ isGalleryOpen, setIsGalleryOpen }) => {
 
     const fetchData = async () => {
       const heroSlidesData = await getHeroSlides();
-      setSlides(heroSlidesData);
-      
-      const imgs = await getGalleryImages();
-      setGallery(imgs);
+      setSlides(heroSlidesData || []);
     };
     fetchData();
   }, []);
 
-  // Sync autoplay
+  // Autoplay for Text Slides (2 seconds)
   useEffect(() => {
     if (isHovered || slides.length <= 1) return;
     const timer = setInterval(() => {
       setCurrentIndex((prev) => (prev + 1) % slides.length);
-    }, 3000);
+    }, 2000); // 2 seconds auto-advance for text slides
     return () => clearInterval(timer);
   }, [isHovered, slides.length]);
 
+  // Autoplay for Images (5 seconds)
+  useEffect(() => {
+    if (isHovered || fallbackImages.length <= 1) return;
+    const imgTimer = setInterval(() => {
+      setCurrentImageIndex((prev) => (prev + 1) % fallbackImages.length);
+    }, 5000); // 5 seconds auto-advance for background images
+    return () => clearInterval(imgTimer);
+  }, [isHovered]);
+
   const handleDotClick = (idx) => {
     setCurrentIndex(idx);
+    logAnalyticsEvent({
+      type: 'hero_slide_jump',
+      label: `Slide ${idx + 1}`
+    });
   };
 
-  const getSlideImage = (slide, index) => {
-    if (slide.imageUrl && (slide.imageUrl.startsWith('http') || slide.imageUrl.startsWith('/') || slide.imageUrl.startsWith('data:'))) {
-      return slide.imageUrl;
-    }
-    return fallbackImages[index % fallbackImages.length];
-  };
-
-  // Text transition variants
-  const textVariants = {
-    initial: { opacity: 0, x: -30 },
-    animate: { opacity: 1, x: 0 },
-    exit: { opacity: 0, x: 30 }
-  };
-
-  // Image transition variants
-  const imageVariants = {
-    initial: { opacity: 0, scale: 0.95, filter: 'blur(4px)' },
-    animate: { opacity: 1, scale: 1, filter: 'blur(0px)' },
-    exit: { opacity: 0, scale: 1.05, filter: 'blur(4px)' }
-  };
-
-  const currentSlide = slides[currentIndex] || {
+  const activeSlide = slides[currentIndex] || {
     headline: "Behaviour Change & \nIEC Specialist",
-    subtext: "9+ years building public systems, IEC/BCC strategy, and climate action programs across Andhra Pradesh & Telangana."
+    subtext: "9+ years building public systems, IEC/BCC strategy, and climate action programs across Andhra Pradesh & Telangana.",
+    imageUrl: fallbackImages[0]
   };
+
+  // Helper to split headline dynamically for rich typography hierarchy
+  const formatHeadline = (text) => {
+    if (!text) return "";
+    const lines = text.split('\n');
+    if (lines.length > 1) {
+      return (
+        <>
+          <span className="block text-white/90 font-medium tracking-tight mb-2 text-3xl sm:text-4xl">{lines[0]}</span>
+          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-secondary via-primary to-secondary font-black drop-shadow-md text-4xl sm:text-5xl lg:text-6xl leading-none">
+            {lines.slice(1).join('\n')}
+          </span>
+        </>
+      );
+    }
+    const words = text.split(' ');
+    if (words.length > 3) {
+      const main = words.slice(0, -2).join(' ');
+      const highlight = words.slice(-2).join(' ');
+      return (
+        <>
+          <span className="block text-white/95 font-medium tracking-tight mb-2 text-3xl sm:text-4xl">{main}</span>
+          <span className="block text-transparent bg-clip-text bg-gradient-to-r from-secondary via-primary to-secondary font-black drop-shadow-md text-4xl sm:text-5xl lg:text-6xl leading-none">
+            {highlight}
+          </span>
+        </>
+      );
+    }
+    return (
+      <span className="block text-transparent bg-clip-text bg-gradient-to-r from-secondary via-primary to-secondary font-black drop-shadow-md text-4xl sm:text-5xl lg:text-6xl leading-none">
+        {text}
+      </span>
+    );
+  };
+
+  const activeImageUrl = activeSlide.imageUrl || fallbackImages[currentImageIndex];
 
   return (
     <section 
-      id="home"
-      className="relative w-full min-h-screen bg-charcoal flex items-center pt-28 pb-16 md:py-0 overflow-hidden text-white font-sans"
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
-      onTouchStart={() => setIsHovered(true)}
-      onTouchEnd={() => setIsHovered(false)}
+      id="home" 
+      className="bg-charcoal min-h-screen flex items-center pt-28 pb-20 px-6 md:px-12 w-full relative overflow-hidden font-sans border-b border-[#25221F]"
     >
-      {/* Background decorations */}
-      <div className="absolute top-20 left-10 text-white/5 text-[12vw] font-black select-none pointer-events-none uppercase tracking-widest z-0">
-        IEC
-      </div>
+      {/* 1. Micro-grid background texture */}
+      <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff03_1px,transparent_1px),linear-gradient(to_bottom,#ffffff03_1px,transparent_1px)] bg-[size:32px_32px] pointer-events-none z-0"></div>
 
-      <div className="max-w-7xl mx-auto px-6 md:px-12 w-full relative z-10">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-16 items-center">
-          
-          {/* Left Column: Animated Text Block */}
-          <div className="lg:col-span-7 flex flex-col items-start text-left order-2 lg:order-1">
-            <div 
-              data-aos="fade-up"
-              className="inline-flex items-center gap-2 border border-secondary/35 rounded-full px-4 py-1.5 text-xs text-secondary font-bold mb-6 bg-[#2d2824]/80 backdrop-blur-sm shadow-sm select-none uppercase tracking-wider"
-            >
-              <span className="w-2 h-2 rounded-full bg-primary animate-ping"></span>
-              National Awardee
-            </div>
+      {/* 2. Soft Ambient color glow bubbles */}
+      <div className="absolute -top-40 -right-40 w-[500px] h-[500px] bg-primary/8 rounded-full blur-[150px] pointer-events-none z-0"></div>
+      <div className="absolute -bottom-40 -left-40 w-[500px] h-[500px] bg-secondary/8 rounded-full blur-[150px] pointer-events-none z-0"></div>
 
-            <div className="min-h-[220px] sm:min-h-[200px] md:min-h-[240px] w-full flex flex-col justify-start relative overflow-hidden">
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentIndex}
-                  variants={textVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={{ duration: 0.5, ease: 'easeInOut' }}
-                  className="w-full"
-                >
-                  <h1 className="text-white text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-black mb-6 tracking-tight leading-[1.1] whitespace-pre-line">
-                    {currentSlide.headline ? (
-                      currentSlide.headline.split('\n').length > 1 ? (
-                        <>
-                          {currentSlide.headline.split('\n')[0]} <br />
-                          <span className="text-secondary font-black drop-shadow-md">
-                            {currentSlide.headline.split('\n').slice(1).join('\n')}
-                          </span>
-                        </>
-                      ) : (
-                        currentSlide.headline
-                      )
-                    ) : (
-                      <>
-                        Hi, I'm a <br />
-                        <span className="text-secondary font-black drop-shadow-md">
-                          Behaviour Change Specialist
-                        </span>
-                      </>
-                    )}
-                  </h1>
-
-                  <p className="text-white/80 text-sm md:text-base lg:text-lg font-medium mb-8 max-w-2xl leading-relaxed">
-                    {currentSlide.subtext}
-                  </p>
-                </motion.div>
-              </AnimatePresence>
-            </div>
-
-            {/* Action Buttons */}
-            <div 
-              data-aos="fade-up"
-              data-aos-delay="300"
-              className="flex flex-row flex-wrap items-center gap-4 w-full mb-10"
-            >
-              <a 
-                href="#experience"
-                className="px-6 py-3.5 rounded-full bg-primary text-white font-bold text-xs md:text-sm hover:bg-primary/90 hover:shadow-[0_0_20px_rgba(193,68,14,0.4)] transition-all duration-300 transform hover:scale-105 shadow-md text-center"
-              >
-                View My Journey
-              </a>
-
-              <a 
-                href="#contact"
-                className="px-6 py-3.5 rounded-full bg-white/10 border border-white/20 text-white font-bold text-xs md:text-sm hover:bg-white/20 transition-all duration-300 backdrop-blur-md text-center"
-              >
-                Contact Me
-              </a>
-            </div>
-
-            {/* Navigation Dot Indicators */}
-            {slides.length > 1 && (
-              <div className="flex gap-2.5 items-center select-none" data-aos="fade-up" data-aos-delay="400">
-                {slides.map((_, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleDotClick(idx)}
-                    className={`h-2.5 rounded-full transition-all duration-300 ${
-                      idx === currentIndex ? 'w-8 bg-secondary' : 'w-2.5 bg-white/30 hover:bg-white/50'
-                    }`}
-                    aria-label={`Go to slide ${idx + 1}`}
-                  />
-                ))}
-              </div>
-            )}
+      <div className="max-w-7xl mx-auto w-full flex flex-col md:flex-row gap-16 items-center relative z-10">
+        
+        {/* Left Column: Rich Typography Text Block */}
+        <div 
+          className="flex-1 text-white text-left select-none z-10"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsHovered(true)}
+          onTouchEnd={() => setIsHovered(false)}
+        >
+          <div className="inline-flex items-center gap-2 border border-secondary/40 rounded-full px-5 py-2 text-[10px] sm:text-xs text-secondary font-bold mb-6 bg-[#2d2824]/60 uppercase tracking-widest backdrop-blur-sm">
+            <span className="w-1.5 h-1.5 bg-secondary rounded-full animate-ping"></span>
+            Public Systems Innovator
           </div>
 
-          {/* Right Column: Dynamic Synced Image Frame */}
-          <div className="lg:col-span-5 flex justify-center items-center order-1 lg:order-2 w-full max-w-md mx-auto lg:max-w-none">
-            <div 
-              data-aos="zoom-in"
-              className="relative w-full aspect-[4/3] sm:aspect-square md:aspect-[4/3] lg:aspect-[4/5] rounded-[2.5rem] overflow-hidden shadow-2xl border border-white/10 bg-[#25221F]"
-            >
-              {/* Decorative side accent lines */}
-              <div className="absolute top-4 left-4 w-4 h-4 border-t-2 border-l-2 border-secondary z-20"></div>
-              <div className="absolute top-4 right-4 w-4 h-4 border-t-2 border-r-2 border-secondary z-20"></div>
-              <div className="absolute bottom-4 left-4 w-4 h-4 border-b-2 border-l-2 border-secondary z-20"></div>
-              <div className="absolute bottom-4 right-4 w-4 h-4 border-b-2 border-r-2 border-secondary z-20"></div>
+          <div className="min-h-[220px] sm:min-h-[260px] flex flex-col justify-center">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: -40 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 40 }}
+                transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
+              >
+                <h1 className="tracking-tight leading-tight mb-6">
+                  {formatHeadline(activeSlide.headline)}
+                </h1>
+                <p className="text-sm sm:text-base md:text-lg text-white/60 font-semibold leading-relaxed max-w-xl">
+                  {activeSlide.subtext}
+                </p>
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
+          <div className="flex flex-wrap gap-4 mt-10">
+            <a 
+              href="#contact" 
+              className="px-8 py-4 rounded-full bg-secondary hover:bg-secondary/95 text-charcoal font-black text-xs uppercase tracking-wider transition-all duration-300 shadow-[0_8px_25px_rgba(232,163,61,0.25)] hover:shadow-[0_12px_30px_rgba(232,163,61,0.4)] hover:scale-[1.03] active:scale-[0.97]"
+            >
+              Collaborate
+            </a>
+            <a 
+              href="#about" 
+              className="px-8 py-4 rounded-full bg-white/5 hover:bg-white/10 text-white border border-white/15 font-black text-xs uppercase tracking-wider transition-all duration-300 backdrop-blur-sm hover:border-white/30"
+            >
+              Learn More
+            </a>
+          </div>
+
+          {/* Dots Indicator */}
+          {slides.length > 1 && (
+            <div className="flex gap-3 mt-12">
+              {slides.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleDotClick(idx)}
+                  className={`h-2 rounded-full transition-all duration-300 focus:outline-none ${
+                    idx === currentIndex 
+                      ? 'bg-secondary w-10 shadow-[0_0_10px_rgba(232,163,61,0.5)]' 
+                      : 'bg-white/20 hover:bg-white/40 w-2'
+                  }`}
+                  aria-label={`Jump to slide ${idx + 1}`}
+                />
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Right Column: Piece de Resistance Asymmetric Layered Showcase */}
+        <div 
+          className="flex-1 w-full flex justify-center items-center relative py-8"
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
+          onTouchStart={() => setIsHovered(true)}
+          onTouchEnd={() => setIsHovered(false)}
+        >
+          <div className="relative w-full max-w-[400px] aspect-[4/5] z-10">
+            
+            {/* A. Blurred offset double backdrop shadow layer */}
+            <div className="absolute inset-4 rounded-[4rem_3rem_6rem_4rem] overflow-hidden blur-2xl opacity-40 scale-95 translate-x-6 translate-y-6 z-0 pointer-events-none transition-all duration-700">
               <AnimatePresence mode="wait">
                 <motion.img
-                  key={currentIndex}
-                  src={getSlideImage(currentSlide, currentIndex)}
-                  alt="JSR Annamayya Public Systems Specialist"
-                  variants={imageVariants}
-                  initial="initial"
-                  animate="animate"
-                  exit="exit"
-                  transition={{ duration: 0.5, ease: 'easeInOut' }}
-                  className="w-full h-full object-cover relative z-10"
+                  key={currentImageIndex}
+                  src={activeImageUrl}
+                  alt="Backdrop glow copy"
+                  className="w-full h-full object-cover"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
                 />
               </AnimatePresence>
             </div>
-          </div>
 
+            {/* B. Organic masked border wrapper */}
+            <div 
+              data-aos="zoom-in" 
+              className="w-full h-full rounded-[4rem_3rem_6rem_4rem] p-2 bg-charcoal/50 border border-white/10 shadow-[0_30px_60px_rgba(0,0,0,0.55)] relative z-10 backdrop-blur-md overflow-hidden transition-all duration-700 hover:rounded-[3rem_5rem_3rem_5rem]"
+            >
+              {/* C. Interactive Main Display Container */}
+              <div className="w-full h-full rounded-[3.8rem_2.8rem_5.8rem_3.8rem] overflow-hidden relative bg-[#2a2622] transition-all duration-700 hover:rounded-[2.8rem_4.8rem_2.8rem_4.8rem]">
+                <AnimatePresence mode="wait">
+                  <motion.img
+                    key={currentImageIndex}
+                    src={activeImageUrl}
+                    alt="JSR Annamayya Showcase slide"
+                    initial={{ opacity: 0, scale: 1.08 }}
+                    animate={{ opacity: 1, scale: 1 }}
+                    exit={{ opacity: 0, scale: 0.95 }}
+                    transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+                    className="w-full h-full object-cover select-none relative z-10 filter brightness-95 hover:brightness-100 transition-all duration-500"
+                  />
+                </AnimatePresence>
+              </div>
+            </div>
+
+            {/* D. Floating badge 1: Years experience */}
+            <motion.div 
+              animate={{ y: [0, -8, 0] }}
+              transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
+              className="absolute -top-4 -left-6 z-20 bg-charcoal/85 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-xl max-w-[170px]"
+            >
+              <div className="w-8 h-8 bg-secondary/20 rounded-xl flex items-center justify-center text-secondary shrink-0">
+                <FaCalendarCheck className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <span className="block text-[11px] font-black text-white">9+ Years</span>
+                <span className="block text-[9px] text-white/50 font-bold">Public Systems</span>
+              </div>
+            </motion.div>
+
+            {/* E. Floating badge 2: Award Recognition */}
+            <motion.div 
+              animate={{ y: [0, 8, 0] }}
+              transition={{ repeat: Infinity, duration: 4.5, ease: "easeInOut", delay: 0.5 }}
+              className="absolute -bottom-4 -right-6 z-20 bg-charcoal/85 backdrop-blur-md border border-white/10 px-4 py-3 rounded-2xl flex items-center gap-3 shadow-xl max-w-[170px]"
+            >
+              <div className="w-8 h-8 bg-primary/20 rounded-xl flex items-center justify-center text-primary shrink-0">
+                <FaAward className="w-4 h-4" />
+              </div>
+              <div className="text-left">
+                <span className="block text-[11px] font-black text-white">National Awardee</span>
+                <span className="block text-[9px] text-white/50 font-bold">Vande Bharat / NYIA</span>
+              </div>
+            </motion.div>
+
+          </div>
         </div>
+
       </div>
-
-      {/* --- DYNAMIC FULL-SCREEN PHOTO GALLERY LIGHTBOX --- */}
-      {isGalleryOpen && gallery.length > 0 && (
-        <div 
-          className="fixed inset-0 w-full h-full z-[100000] bg-black/95 backdrop-blur-md flex flex-col justify-center items-center p-4 md:p-8"
-          onClick={() => setIsGalleryOpen(false)}
-        >
-          {/* Ambient color light glow */}
-          <div className="absolute -inset-10 bg-gradient-to-tr from-primary/20 to-secondary/20 blur-[80px] opacity-70 z-0 pointer-events-none"></div>
-
-          {/* Close Lightbox */}
-          <button 
-            onClick={() => setIsGalleryOpen(false)}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/10 border border-white/20 text-white flex items-center justify-center hover:bg-primary hover:border-transparent transition-all duration-300 z-50 focus:outline-none"
-            title="Close Gallery"
-          >
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M6 18L18 6M6 6l12 12" />
-            </svg>
-          </button>
-
-          {/* Centered Image display frame */}
-          <div 
-            className="relative w-full max-w-4xl aspect-[4/3] sm:aspect-[16/10] rounded-3xl overflow-hidden shadow-2xl border border-white/10 z-10 bg-black/50 flex items-center justify-center"
-            onClick={(e) => {
-              e.stopPropagation();
-            }}
-          >
-            <img 
-              src={gallery[activePhotoIdx].image} 
-              alt={gallery[activePhotoIdx].caption} 
-              className="max-w-full max-h-full object-contain select-none"
-            />
-
-            {/* Left Prev Arrow */}
-            <button 
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                const newIdx = (activePhotoIdx - 1 + gallery.length) % gallery.length;
-                setActivePhotoIdx(newIdx); 
-                logAnalyticsEvent({ type: 'gallery_click', label: gallery[newIdx].caption });
-              }}
-              className="absolute left-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 border border-white/10 text-white flex items-center justify-center hover:bg-primary hover:border-transparent transition-all focus:outline-none shadow-md"
-              title="Previous Photo"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M15 19l-7-7 7-7" />
-              </svg>
-            </button>
-
-            {/* Right Next Arrow */}
-            <button 
-              onClick={(e) => { 
-                e.stopPropagation(); 
-                const newIdx = (activePhotoIdx + 1) % gallery.length;
-                setActivePhotoIdx(newIdx); 
-                logAnalyticsEvent({ type: 'gallery_click', label: gallery[newIdx].caption });
-              }}
-              className="absolute right-4 top-1/2 -translate-y-1/2 w-11 h-11 rounded-full bg-black/60 border border-white/10 text-white flex items-center justify-center hover:bg-primary hover:border-transparent transition-all focus:outline-none shadow-md"
-              title="Next Photo"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 5l7 7-7 7" />
-              </svg>
-            </button>
-          </div>
-
-          {/* Slideshow Caption card */}
-          <div 
-            className="bg-white/5 border border-white/10 backdrop-blur-md rounded-[2.2rem] p-6 mt-6 max-w-4xl w-full text-white text-center z-10 shadow-2xl relative"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <span className="text-[10px] font-mono text-secondary font-bold uppercase tracking-widest">
-              Photo {activePhotoIdx + 1} of {gallery.length}
-            </span>
-            <p className="text-xs md:text-sm font-bold mt-2 text-offwhite leading-relaxed">
-              {gallery[activePhotoIdx].caption}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Scroll Down Indicator */}
       <div className="hidden md:block absolute bottom-8 left-1/2 transform -translate-x-1/2 z-20 pointer-events-none">
         <div className="animate-bounce">
           <svg 
-            className="w-6 h-6 text-white/40 drop-shadow-sm" 
+            className="w-6 h-6 text-white/30 drop-shadow-sm" 
             fill="none" 
             strokeLinecap="round" 
             strokeLinejoin="round" 

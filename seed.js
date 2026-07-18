@@ -42,6 +42,39 @@ const heroData = {
   introText: "Hi, I am JSR Annamayya. I am a National Award winning Behaviour Change and IEC Specialist with over nine years of experience building public systems and driving climate action. Throughout my career, I have had the privilege of working with municipal corporations and environmental organizations across Andhra Pradesh and Telangana. I am honoured to have received the Vande Bharat Puraskar in 2023, the National Youth Icon Award in 2022, and the Indian Star Icon Award in 2021. Welcome to my portfolio."
 };
 
+const heroSlidesData = [
+  {
+    order: 1,
+    headline: "From an EEE Classroom to National Recognition",
+    subtext: "Gold Medalist in Electrical & Electronics Engineering turned National Award-Winning Behaviour Change & IEC Specialist — 9+ years building public systems across Andhra Pradesh and Telangana.",
+    imageUrl: ""
+  },
+  {
+    order: 2,
+    headline: "Turning Government Systems Into Movements",
+    subtext: "From corporate delivery at Wipro and Accenture to leading IEC and sanitation reform inside four municipal corporations — building the bridge between institutions and citizens.",
+    imageUrl: ""
+  },
+  {
+    order: 3,
+    headline: "Behind Guntur's Rise to Rank 4",
+    subtext: "Led citizen engagement and IEC strategy behind Guntur's national Swachh Survekshan turnaround — proof that public behaviour change is designable, not accidental.",
+    imageUrl: ""
+  },
+  {
+    order: 4,
+    headline: "Innovating Where Policy Meets People",
+    subtext: "Creator of the \"Any Time Bag\" solar-powered cloth bag vending machine — a UNDP-recognised innovation removing plastic waste at the exact moment it happens.",
+    imageUrl: ""
+  },
+  {
+    order: 5,
+    headline: "A Voice for Sustainable Governance, Nationally",
+    subtext: "Invited speaker at IIT Indore, BITS Pilani, CSE New Delhi, and the India MHM Summit — carrying grassroots lessons from Andhra Pradesh and Telangana to national platforms.",
+    imageUrl: ""
+  }
+];
+
 // 2. Singleton About
 const aboutData = {
   bio1: "Graduated as a Gold Medallist in Electrical & Electronics Engineering (EEE) from Tirumala Engineering College, Narasaraopet, presenting over 21 technical papers at prestigious institutions like BITS Pilani, JNTUH, and Anna University.",
@@ -187,42 +220,49 @@ const awardsData = [
     title: 'Vande Bharat Puraskar',
     year: '2023',
     issuer: 'Govt. of Telangana',
-    desc: 'Civilian honour for outstanding contribution and public service in environmental transformation.'
+    desc: 'Civilian honour for outstanding contribution and public service.'
   },
   {
     order: 2,
     title: 'National Youth Icon Award',
     year: '2022',
-    issuer: 'National Youth Parliament, New Delhi',
-    desc: 'Recognised at the National Youth Platform for youth leadership and community engagement.'
+    issuer: 'National Youth Parliament, Delhi',
+    desc: 'Recognised for outstanding leadership and community engagement.'
   },
   {
     order: 3,
     title: 'Indian Star Icon Award',
     year: '2021',
-    issuer: 'National Human Rights Advisory, New Delhi',
-    desc: 'National human rights-linked recognition for contributions to public systems.'
+    issuer: 'National Human Rights Commission, Delhi',
+    desc: 'Civilian recognition for contribution to public systems.'
   },
   {
     order: 4,
     title: 'Best Government Service Award',
     year: '2020',
-    issuer: 'Guntur District Administration',
-    desc: 'Collector recognition for leadership in sanitation and Swachh Survekshan milestones.'
+    issuer: 'Govt. of Andhra Pradesh',
+    desc: 'Recognised for outstanding public systems leadership and sanitation reforms.'
   },
   {
     order: 5,
-    title: 'Youth Environmental Champion',
-    year: '2023',
-    issuer: 'JCI India',
-    desc: 'Recognised for state-level ecological awareness campaigns and climate leadership.'
+    title: 'Gold Medalist',
+    year: '2016',
+    issuer: 'Tirumala Engineering College (TEC), JNTUK',
+    desc: 'Academic gold medalist in Electrical & Electronics Engineering.'
   },
   {
     order: 6,
-    title: 'College Gold Medalist',
+    title: 'Best Start-Up Idea Award Holder',
     year: '2016',
-    issuer: 'Tirumala Engineering College, JNTUK',
-    desc: 'Awarded for academic excellence in Electrical & Electronics Engineering.'
+    issuer: 'Telangana, Startup Carnival',
+    desc: 'Awarded for best start-up idea presentation.'
+  },
+  {
+    order: 7,
+    title: 'Solar Innovation Presentation Champion',
+    year: '2015',
+    issuer: '40+ National Engineering Colleges',
+    desc: 'Recognised by 40+ national engineering colleges for best presentations on solar innovation, including an original solar tree design.'
   }
 ];
 
@@ -259,6 +299,13 @@ const seedDatabase = async () => {
     // Seed Hero
     await db.collection('content').doc('hero').set(heroData);
     console.log("✅ Seeded content/hero doc");
+
+    // Seed Hero Slides
+    const heroSlidesRef = db.collection('heroSlides');
+    const heroSlidesSnap = await heroSlidesRef.get();
+    await Promise.all(heroSlidesSnap.docs.map(d => d.ref.delete()));
+    await Promise.all(heroSlidesData.map(slide => heroSlidesRef.add(slide)));
+    console.log(`✅ Seeded ${heroSlidesData.length} hero slides`);
 
     // Seed About
     await db.collection('content').doc('about').set(aboutData);

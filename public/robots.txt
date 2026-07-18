@@ -1,6 +1,5 @@
 User-agent: *
 Allow: /
 Disallow: /admin
-Disallow: /api/
 
 Sitemap: https://jsrannamayya.com/sitemap.xml

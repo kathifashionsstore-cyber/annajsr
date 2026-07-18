@@ -1,16 +1,22 @@
 import React, { useEffect, useState } from 'react';
 import stackImage from '../assets/about/image.png';
-import { getAboutContent } from '../services/portfolioService';
+import { getAboutContent, getInnovations } from '../services/portfolioService';
 
 const About = () => {
-  const [aboutData, setAboutData] = useState({ bio1: '', bio2: '', strengths: [] });
+  const [aboutData, setAboutData] = useState({ intro: '', eduBio: '', serviceBio: '', corporateBio: '', strengths: [] });
+  const [innovations, setInnovations] = useState([]);
 
   useEffect(() => {
     const fetchAbout = async () => {
       const data = await getAboutContent();
       setAboutData(data);
     };
+    const fetchInnovations = async () => {
+      const data = await getInnovations();
+      setInnovations(data || []);
+    };
     fetchAbout();
+    fetchInnovations();
   }, []);
 
   return (
@@ -48,18 +54,40 @@ const About = () => {
         {/* Right Side: Info Content */}
         <div data-aos="fade-left" data-aos-delay="200" className="flex-1 text-white mt-8 md:mt-0 relative z-20">
           
-          <h2 className="text-4xl md:text-5xl font-black text-charcoal mb-4">About Me</h2>
-          <p className="text-lg font-bold mb-6 leading-relaxed max-w-3xl text-white/95">
-            {aboutData.bio1 || "Graduated as a Gold Medallist in Electrical & Electronics Engineering (EEE) from Tirumala Engineering College, Narasaraopet, presenting over 21 technical papers at prestigious institutions like BITS Pilani, JNTUH, and Anna University."}
-          </p>
-          <p className="text-base font-semibold mb-6 leading-relaxed max-w-3xl text-white/90">
-            {aboutData.bio2 || "Started professional career in the software corporate world at Accenture and Wipro (2016–2019) as a Quality Team Lead and Special Project Area Lead, managing large engineering delivery operations before transitioning full-time into public systems governance."}
-          </p>
-          <p className="text-sm font-medium mb-10 leading-relaxed max-w-3xl text-white/85">
-            {aboutData.bio3 || "Since transitioning, has driven extensive solid waste management (SWM) campaigns and Behaviour Change Communication (BCC/IEC) programs across municipal administrations and departments in Andhra Pradesh and Telangana. Guided state-level environmental initiatives like the Young Earth Leaders Program, training 50,000+ students across 500+ government schools and 100+ colleges, and dedicating 2,080+ hours of community outreach."}
+          <h2 className="text-4xl md:text-5xl font-black text-charcoal mb-6">About Me</h2>
+          
+          {/* Intro / Tagline */}
+          <p className="text-base md:text-lg font-bold mb-8 leading-relaxed max-w-3xl text-charcoal bg-white/10 p-5 rounded-2xl border border-white/5 shadow-sm">
+            {aboutData.intro || "A Trailblazer in Environmental Sustainability and Leadership with 9 years of expertise in IEC strategies, solid waste management, corporate operations, and community development. Recognised for his innovative approaches, he has made a lasting impact in public service and corporate leadership."}
           </p>
 
-          <h3 className="text-2xl font-black text-charcoal mb-6">Core Strengths</h3>
+          <div className="space-y-6">
+            {/* Subsection 1 */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-charcoal/80 mb-2">Educational & Early Career Excellence</h4>
+              <p className="text-xs sm:text-sm font-semibold leading-relaxed max-w-3xl text-white/90">
+                {aboutData.eduBio || "JSR Annamayya holds a Gold Medal from Tirumala Engineering College with a B.Tech in Electrical & Electronics Engineering, an early testament to his dedication and pursuit of excellence. His technical acumen and innovative mindset have laid the foundation for his future contributions to society. He has taken the stage at numerous national forums in Delhi, representing India many times and sharing his insights on critical issues on SWM at the India Circular Economy Forum 2024."}
+              </p>
+            </div>
+
+            {/* Subsection 2 */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-charcoal/80 mb-2">Public Service & Environmental Advocacy</h4>
+              <p className="text-xs sm:text-sm font-semibold leading-relaxed max-w-3xl text-white/90">
+                {aboutData.serviceBio || "As an IEC Specialist in Andhra Pradesh municipal administrations, he influenced sustainable behavioural change among 2.2 million people, played a key role in the National Swachh Bharat rankings of the Government of India, and earned national recognition for best practices in environmental sustainability."}
+              </p>
+            </div>
+
+            {/* Subsection 3 */}
+            <div>
+              <h4 className="text-xs font-black uppercase tracking-wider text-charcoal/80 mb-2">Corporate & Strategic Leadership</h4>
+              <p className="text-xs sm:text-sm font-semibold leading-relaxed max-w-3xl text-white/90">
+                {aboutData.corporateBio || "At Wipro and Accenture, he led an 80+ member team, showcasing excellence in technical solutions, project management, and leadership for Silicon Valley clients including Google and Uber."}
+              </p>
+            </div>
+          </div>
+
+          <h3 className="text-2xl font-black text-charcoal mb-6 mt-10">Core Strengths</h3>
           {/* Strengths Badges Row */}
           <div className="flex flex-wrap gap-2.5 max-w-3xl">
             {(aboutData.strengths || []).map((strength, idx) => (
@@ -76,6 +104,29 @@ const About = () => {
 
         </div>
       </div>
+
+      {/* Innovations & Technological Solutions */}
+      {innovations.length > 0 && (
+        <div className="max-w-6xl mx-auto mt-20 border-t border-white/10 pt-16 relative z-20">
+          <h3 className="text-3xl font-black text-charcoal mb-8 text-center md:text-left">Innovations & Tech Solutions</h3>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {innovations.map((item, idx) => (
+              <div 
+                key={item.id || idx} 
+                data-aos="fade-up"
+                data-aos-delay={idx * 100}
+                className="bg-charcoal/60 backdrop-blur-sm p-6 rounded-3xl border border-white/10 flex flex-col gap-3 hover:border-secondary/40 transition-all duration-300 group shadow-lg"
+              >
+                <div className="w-10 h-10 rounded-2xl bg-secondary/10 flex items-center justify-center text-secondary font-black text-lg group-hover:scale-110 transition-transform">
+                  {idx + 1}
+                </div>
+                <h4 className="text-base font-black text-white group-hover:text-secondary transition-colors">{item.title}</h4>
+                <p className="text-xs text-white/70 leading-relaxed font-semibold">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Torn paper divider at bottom (blends into off-white next section) */}
       <div className="absolute bottom-0 left-0 w-full pointer-events-none z-30 transform translate-y-1">

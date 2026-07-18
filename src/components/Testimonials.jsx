@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaQuoteLeft, FaChevronLeft, FaChevronRight, FaDownload, FaFilePdf, FaImage } from 'react-icons/fa';
-import { getTestimonials, logAnalyticsEvent } from '../services/portfolioService';
+import { FaQuoteLeft, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { getTestimonials } from '../services/portfolioService';
 
 const FALLBACK_TESTIMONIALS = [
   {
@@ -18,22 +18,27 @@ const FALLBACK_TESTIMONIALS = [
   },
   {
     id: 'f3',
-    name: 'Rajendra Prasad',
+    name: 'P. Venkata Subbaiah',
     organisation: 'Rajamahendravaram Municipal Corp.',
-    quote: 'We witnessed a 15% increase in segregation efficiency within months of JSR launching the BCC campaign. He combines strategic public systems thinking with active grassroots implementation.'
+    quote: 'His grassroots campaign designs and capacity-building workshops brought absolute transparency to our SWM operations, helping scale segregation outcomes effectively.'
   }
 ];
 
 const Testimonials = () => {
   const [list, setList] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+
   useEffect(() => {
     const fetchData = async () => {
       try {
         const data = await getTestimonials();
-        setList(data.length > 0 ? data.sort((a,b) => (a.order || 0) - (b.order || 0)) : FALLBACK_TESTIMONIALS);
+        if (data && data.length > 0) {
+          setList(data);
+        } else {
+          setList(FALLBACK_TESTIMONIALS);
+        }
       } catch (err) {
-        console.warn("Failed to load testimonials, using fallbacks", err);
+        console.warn("Failed to fetch testimonials, using fallbacks", err);
         setList(FALLBACK_TESTIMONIALS);
       }
     };
@@ -57,18 +62,10 @@ const Testimonials = () => {
     setCurrentIndex(prev => (prev + 1) % list.length);
   };
 
-  const handleDownload = (type) => {
-    logAnalyticsEvent({
-      type: 'press_kit_download',
-      label: type
-    });
-  };
-
   if (list.length === 0) return null;
 
   return (
     <section className="bg-[#1a1815] py-24 px-6 md:px-12 w-full relative overflow-hidden font-sans border-t border-white/5">
-      
       {/* Background shape */}
       <div className="absolute top-0 right-0 w-80 h-80 bg-primary/5 rounded-full blur-[100px] pointer-events-none"></div>
 
@@ -109,9 +106,9 @@ const Testimonials = () => {
             </motion.div>
           </AnimatePresence>
 
-          {/* Slider Buttons */}
+          {/* Navigation Arrows */}
           {list.length > 1 && (
-            <div className="absolute -bottom-10 flex gap-4 z-20">
+            <div className="absolute -bottom-16 flex gap-4">
               <button 
                 onClick={handlePrev}
                 className="w-10 h-10 rounded-full border border-white/10 hover:border-secondary text-white hover:text-secondary flex items-center justify-center transition-all bg-[#1a1815] focus:outline-none"
@@ -126,40 +123,6 @@ const Testimonials = () => {
               </button>
             </div>
           )}
-        </div>
-
-        {/* Press & Media Kit */}
-        <div className="w-full bg-gradient-to-br from-[#25221F] to-[#1e1b18] border border-white/5 p-8 md:p-10 rounded-[2.5rem] shadow-2xl flex flex-col md:flex-row justify-between items-center gap-8 mt-6">
-          <div className="text-left max-w-lg">
-            <h3 className="text-lg md:text-xl font-black text-white tracking-tight">Press & Media Kit</h3>
-            <p className="text-white/50 text-xs mt-2 leading-relaxed font-medium">
-              Access JSR Annamayya's official press packet containing high-resolution headshots, speaker profiles, and verified curriculum vitae.
-            </p>
-          </div>
-          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto shrink-0">
-            {/* Download CV */}
-            <a
-              href="/JSR_Annamayya_CV.pdf"
-              onClick={() => handleDownload('CV')}
-              download
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 py-3 rounded-full border border-white/10 hover:border-secondary bg-transparent hover:bg-secondary/5 text-white hover:text-secondary font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-sm"
-            >
-              <FaFilePdf className="w-3.5 h-3.5" /> Download CV
-            </a>
-            
-            {/* Download Bio & Headshots (Mock Drive Link) */}
-            <a
-              href="https://drive.google.com/drive/folders/mock_jsr_press_kit_folder_id"
-              onClick={() => handleDownload('Media Pack')}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="px-5 py-3 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-md"
-            >
-              <FaImage className="w-3.5 h-3.5" /> Media Pack
-            </a>
-          </div>
         </div>
 
       </div>

@@ -24,9 +24,10 @@ const FALLBACK_HERO = {
 };
 
 const FALLBACK_ABOUT = {
-  bio1: "Graduated as a Gold Medallist in Electrical & Electronics Engineering (EEE) from Tirumala Engineering College, Narasaraopet, presenting over 21 technical papers at prestigious institutions like BITS Pilani, JNTUH, and Anna University.",
-  bio2: "Started professional career in the software corporate world at Accenture and Wipro (2016–2019) as a Quality Team Lead and Special Project Area Lead, managing large engineering delivery operations before transitioning full-time into public systems governance.",
-  bio3: "Since transitioning, has driven extensive solid waste management (SWM) campaigns and Behaviour Change Communication (BCC/IEC) programs across municipal administrations and departments in Andhra Pradesh and Telangana. Guided state-level environmental initiatives like the Young Earth Leaders Program, training 50,000+ students across 500+ government schools and 100+ colleges, and dedicating 2,080+ hours of community outreach.",
+  intro: "A Trailblazer in Environmental Sustainability and Leadership with 9 years of expertise in IEC strategies, solid waste management, corporate operations, and community development. Recognised for his innovative approaches, he has made a lasting impact in public service and corporate leadership.",
+  eduBio: "JSR Annamayya holds a Gold Medal from Tirumala Engineering College with a B.Tech in Electrical & Electronics Engineering, an early testament to his dedication and pursuit of excellence. His technical acumen and innovative mindset have laid the foundation for his future contributions to society. He has taken the stage at numerous national forums in Delhi, representing India many times and sharing his insights on critical issues on SWM at the India Circular Economy Forum 2024.",
+  serviceBio: "As an IEC Specialist in Andhra Pradesh municipal administrations, he influenced sustainable behavioural change among 2.2 million people, played a key role in the National Swachh Bharat rankings of the Government of India, and earned national recognition for best practices in environmental sustainability.",
+  corporateBio: "At Wipro and Accenture, he led an 80+ member team, showcasing excellence in technical solutions, project management, and leadership for Silicon Valley clients including Google and Uber.",
   strengths: [
     "Government Expertise",
     "IEC & BCC Strategy",
@@ -118,37 +119,43 @@ const FALLBACK_AWARDS = [
     title: 'Vande Bharat Puraskar',
     year: '2023',
     issuer: 'Govt. of Telangana',
-    desc: 'Civilian honour for outstanding contribution and public service in environmental transformation.'
+    desc: 'Civilian honour for outstanding contribution and public service.'
   },
   {
     title: 'National Youth Icon Award',
     year: '2022',
-    issuer: 'National Youth Parliament, New Delhi',
-    desc: 'Recognised at the National Youth Platform for youth leadership and community engagement.'
+    issuer: 'National Youth Parliament, Delhi',
+    desc: 'Recognised for outstanding leadership and community engagement.'
   },
   {
     title: 'Indian Star Icon Award',
     year: '2021',
-    issuer: 'National Human Rights Advisory, New Delhi',
-    desc: 'National human rights-linked recognition for contributions to public systems.'
+    issuer: 'National Human Rights Commission, Delhi',
+    desc: 'Civilian recognition for contribution to public systems.'
   },
   {
     title: 'Best Government Service Award',
     year: '2020',
-    issuer: 'Guntur District Administration',
-    desc: 'Collector recognition for leadership in sanitation and Swachh Survekshan milestones.'
+    issuer: 'Govt. of Andhra Pradesh',
+    desc: 'Recognised for outstanding public systems leadership and sanitation reforms.'
   },
   {
-    title: 'Youth Environmental Champion',
-    year: '2023',
-    issuer: 'JCI India',
-    desc: 'Recognised for state-level ecological awareness campaigns and climate leadership.'
-  },
-  {
-    title: 'College Gold Medalist',
+    title: 'Gold Medalist',
     year: '2016',
-    issuer: 'Tirumala Engineering College, JNTUK',
-    desc: 'Awarded for academic excellence in Electrical & Electronics Engineering.'
+    issuer: 'Tirumala Engineering College (TEC), JNTUK',
+    desc: 'Academic gold medalist in Electrical & Electronics Engineering.'
+  },
+  {
+    title: 'Best Start-Up Idea Award Holder',
+    year: '2016',
+    issuer: 'Telangana, Startup Carnival',
+    desc: 'Awarded for best start-up idea presentation.'
+  },
+  {
+    title: 'Solar Innovation Presentation Champion',
+    year: '2015',
+    issuer: '40+ National Engineering Colleges',
+    desc: 'Recognised by 40+ national engineering colleges for best presentations on solar innovation, including an original solar tree design.'
   }
 ];
 
@@ -213,7 +220,7 @@ export const saveTimelineStop = async (stop) => {
   if (stop.id) {
     const docRef = doc(db, 'timeline', stop.id);
     const { id, ...data } = stop;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'timeline'), stop);
   }
@@ -230,7 +237,7 @@ export const saveVideo = async (video) => {
   if (video.id) {
     const docRef = doc(db, 'videos', video.id);
     const { id, ...data } = video;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'videos'), video);
   }
@@ -247,7 +254,7 @@ export const saveStat = async (stat) => {
   if (stat.id) {
     const docRef = doc(db, 'stats', stat.id);
     const { id, ...data } = stat;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'stats'), stat);
   }
@@ -264,7 +271,7 @@ export const saveAward = async (award) => {
   if (award.id) {
     const docRef = doc(db, 'awards', award.id);
     const { id, ...data } = award;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'awards'), award);
   }
@@ -288,7 +295,7 @@ export const saveGalleryImage = async (img) => {
   if (img.id) {
     const docRef = doc(db, 'gallery', img.id);
     const { id, ...data } = img;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'gallery'), img);
   }
@@ -394,31 +401,53 @@ export const updateContactSettings = async (data) => {
 
 // --- HERO SLIDES (SLIDER LIST) ---
 export const getHeroSlides = async () => {
+  const fallbackList = [
+    {
+      id: 'h1',
+      order: 1,
+      headline: "From an EEE Classroom to National Recognition",
+      subtext: "Gold Medalist in Electrical & Electronics Engineering turned National Award-Winning Behaviour Change & IEC Specialist — 9+ years building public systems across Andhra Pradesh and Telangana.",
+      imageUrl: ""
+    },
+    {
+      id: 'h2',
+      order: 2,
+      headline: "Leading Teams, Then Leading Change",
+      subtext: "Led an 80+ member team at Wipro and Accenture delivering for Silicon Valley clients including Google and Uber — before turning that same leadership toward public service.",
+      imageUrl: ""
+    },
+    {
+      id: 'h3',
+      order: 3,
+      headline: "Behavioural Change, at Scale",
+      subtext: "Influenced sustainable behavioural change among 2.2 million people as an IEC Specialist across Andhra Pradesh's municipal administrations.",
+      imageUrl: ""
+    },
+    {
+      id: 'h4',
+      order: 4,
+      headline: "Innovating Where Policy Meets People",
+      subtext: "Founder of Checkcovidnow and creator of the \"Any Time Bag\" solar-powered cloth bag vending machine — a UN-recognised innovation removing plastic waste at the exact moment it happens.",
+      imageUrl: ""
+    },
+    {
+      id: 'h5',
+      order: 5,
+      headline: "A Voice for Sustainable Governance, Nationally",
+      subtext: "Speaker at the India Circular Economy Forum 2024 and national platforms in Delhi — carrying grassroots lessons to the national stage.",
+      imageUrl: ""
+    }
+  ];
+
   try {
     const list = await getSortedCollection('heroSlides', []);
     if (!list || list.length === 0) {
-      return [
-        {
-          id: 'default',
-          order: 1,
-          headline: "Behaviour Change & \nIEC Specialist",
-          subtext: "9+ years building public systems, IEC/BCC strategy, and climate action programs across Andhra Pradesh & Telangana.",
-          imageUrl: ""
-        }
-      ];
+      return fallbackList;
     }
     return list;
   } catch (e) {
     console.warn("Firestore fetch failed for heroSlides, returning fallback", e);
-    return [
-      {
-        id: 'default',
-        order: 1,
-        headline: "Behaviour Change & \nIEC Specialist",
-        subtext: "9+ years building public systems, IEC/BCC strategy, and climate action programs across Andhra Pradesh & Telangana.",
-        imageUrl: ""
-      }
-    ];
+    return fallbackList;
   }
 };
 
@@ -426,7 +455,7 @@ export const saveHeroSlide = async (slide) => {
   if (slide.id && slide.id !== 'default') {
     const docRef = doc(db, 'heroSlides', slide.id);
     const { id, ...data } = slide;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
     await logSystemActivity('save_hero_slide', `Updated slide: ${slide.headline}`);
   } else {
     const { id, ...data } = slide;
@@ -459,7 +488,7 @@ export const saveTestimonial = async (t) => {
   if (t.id) {
     const docRef = doc(db, 'testimonials', t.id);
     const { id, ...data } = t;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
     await logSystemActivity('save_testimonial', `Updated testimonial by ${t.author}`);
   } else {
     await addDoc(collection(db, 'testimonials'), t);
@@ -490,7 +519,7 @@ export const savePressItem = async (item) => {
   if (item.id) {
     const docRef = doc(db, 'press', item.id);
     const { id, ...data } = item;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
     await logSystemActivity('save_press_item', `Updated press: ${item.title}`);
   } else {
     await addDoc(collection(db, 'press'), item);
@@ -661,7 +690,7 @@ export const saveService = async (service) => {
   if (service.id) {
     const docRef = doc(db, 'services', service.id);
     const { id, ...data } = service;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'services'), service);
   }
@@ -687,7 +716,7 @@ export const saveDepartment = async (dept) => {
   if (dept.id) {
     const docRef = doc(db, 'departments', dept.id);
     const { id, ...data } = dept;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'departments'), dept);
   }
@@ -695,6 +724,28 @@ export const saveDepartment = async (dept) => {
 
 export const deleteDepartment = async (id) => {
   await deleteDoc(doc(db, 'departments', id));
+};
+
+// --- INNOVATIONS ---
+export const getInnovations = () => getSortedCollection('innovations', [
+  { order: 1, title: 'Checkcovidnow / Arogya Setu', description: 'Recognised as the first rapid COVID-19 detection web app in Telangana; JSR is its founder.' },
+  { order: 2, title: 'Any Time Bag (ATB) Cloth Bag Vending Machine', description: 'A United Nations-recognised initiative combating plastic pollution and avoiding single-use plastic covers.' },
+  { order: 3, title: 'Municipal Chatbot & Command Control Unit', description: 'Enhancing citizen engagement in waste management with technology at the doorstep level.' },
+  { order: 4, title: 'Green Saving Concepts & Quick Response Team', description: 'Addressing plastic waste and mobilising communities.' }
+]);
+
+export const saveInnovation = async (innovation) => {
+  if (innovation.id) {
+    const docRef = doc(db, 'innovations', innovation.id);
+    const { id, ...data } = innovation;
+    await setDoc(docRef, data, { merge: true });
+  } else {
+    await addDoc(collection(db, 'innovations'), innovation);
+  }
+};
+
+export const deleteInnovation = async (id) => {
+  await deleteDoc(doc(db, 'innovations', id));
 };
 
 // --- CASE STUDIES ---
@@ -747,7 +798,7 @@ export const saveCaseStudy = async (cs) => {
   if (cs.id) {
     const docRef = doc(db, 'caseStudies', cs.id);
     const { id, ...data } = cs;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'caseStudies'), cs);
   }
@@ -775,7 +826,7 @@ export const saveHighlight = async (h) => {
   if (h.id) {
     const docRef = doc(db, 'highlights', h.id);
     const { id, ...data } = h;
-    await updateDoc(docRef, data);
+    await setDoc(docRef, data, { merge: true });
   } else {
     await addDoc(collection(db, 'highlights'), h);
   }

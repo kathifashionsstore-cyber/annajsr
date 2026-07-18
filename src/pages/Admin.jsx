@@ -17,6 +17,7 @@ import {
   getDepartments, saveDepartment, deleteDepartment,
   getCaseStudies, saveCaseStudy, deleteCaseStudy,
   getHighlights, saveHighlight, deleteHighlight,
+  getInnovations, saveInnovation, deleteInnovation,
   getAnalyticsSummary, getRecentActivities, getSystemLogs,
   logSystemActivity
 } from '../services/portfolioService';
@@ -27,12 +28,38 @@ import {
   FaInfoCircle, FaTrophy, FaChevronRight, FaEnvelope, FaCog,
   FaQuoteLeft, FaNewspaper, FaFilePdf, FaChartBar, FaUserCheck,
   FaMobileAlt, FaDesktop, FaTabletAlt, FaGlobe, FaVolumeMute, FaVolumeUp,
-  FaCommentDots, FaBuilding, FaBookOpen, FaStar, FaLightbulb
+  FaCommentDots, FaBuilding, FaBookOpen, FaStar, FaLightbulb, FaBars, FaTimes, FaFlask
 } from 'react-icons/fa';
 import { auth, storage, db } from '../firebase';
 import { signInWithEmailAndPassword, signOut, onAuthStateChanged } from 'firebase/auth';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { collection, onSnapshot, query, orderBy } from 'firebase/firestore';
+
+const AdminSaveButton = ({ loading, label = "Save", onClick, className = "" }) => {
+  return (
+    <button
+      type="submit"
+      disabled={loading}
+      onClick={onClick}
+      className={`px-6 py-2 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-md transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed ${className}`}
+    >
+      {loading ? (
+        <>
+          <svg className="animate-spin h-3.5 w-3.5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+          </svg>
+          <span>Saving...</span>
+        </>
+      ) : (
+        <>
+          <FaSave className="w-3.5 h-3.5" />
+          <span>{label}</span>
+        </>
+      )}
+    </button>
+  );
+};
 
 const Admin = () => {
   const navigate = useNavigate();
@@ -42,6 +69,36 @@ const Admin = () => {
   const [authError, setAuthError] = useState('');
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(false);
+  
+  // Mobile & Image Preview States
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
+  const [adminToast, setAdminToast] = useState(null); // { text, isError }
+
+  const showAdminToast = (text, isError = false) => {
+    setAdminToast({ text, isError });
+    setTimeout(() => {
+      setAdminToast(null);
+    }, 3000);
+  };
+
+  const handleLocalPreview = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+    }
+    const preview = URL.createObjectURL(file);
+    setImagePreviewUrl(preview);
+  };
+
+  const clearPreview = () => {
+    if (imagePreviewUrl) {
+      URL.revokeObjectURL(imagePreviewUrl);
+      setImagePreviewUrl(null);
+    }
+  };
 
   // Section States
   const [heroData, setHeroData] = useState({ title: '', subtitle: '', introText: '' });
@@ -56,6 +113,7 @@ const Admin = () => {
   const [stats, setStats] = useState([]);
   const [awards, setAwards] = useState([]);
   const [gallery, setGallery] = useState([]);
+  const [innovations, setInnovations] = useState([]);
 
   // Dynamic content extensions
   const [talks, setTalks] = useState([]);
@@ -80,6 +138,15 @@ const Admin = () => {
 
   // Listen to Firebase Auth state change on mount
   useEffect(() => {
+    // Add noindex meta tag to prevent search indexing of admin pages
+    let metaTag = document.querySelector('meta[name="robots"]');
+    if (!metaTag) {
+      metaTag = document.createElement('meta');
+      metaTag.name = 'robots';
+      document.head.appendChild(metaTag);
+    }
+    metaTag.content = 'noindex, nofollow';
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsAuthenticated(true);
@@ -88,8 +155,30 @@ const Admin = () => {
         setIsAuthenticated(false);
       }
     });
-    return () => unsubscribe();
+
+    return () => {
+      unsubscribe();
+      if (metaTag) {
+        metaTag.remove();
+      }
+    };
   }, []);
+
+  // Cleanup preview URL on edit item changes
+  useEffect(() => {
+    if (!editingItem && imagePreviewUrl) {
+      clearPreview();
+    }
+  }, [editingItem]);
+
+  // Cleanup on unmount
+  useEffect(() => {
+    return () => {
+      if (imagePreviewUrl) {
+        URL.revokeObjectURL(imagePreviewUrl);
+      }
+    };
+  }, [imagePreviewUrl]);
 
   const [unreadCount, setUnreadCount] = useState(0);
   const [showToast, setShowToast] = useState(false);
@@ -102,39 +191,44 @@ const Admin = () => {
     const q = query(collection(db, 'contacts'), orderBy('createdAt', 'desc'));
     let isFirstLoad = true;
 
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const messagesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setMessages(messagesList);
+    const unsubscribe = onSnapshot(q, 
+      (snapshot) => {
+        const messagesList = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+        setMessages(messagesList);
 
-      if (snapshot.metadata.hasPendingWrites) return;
+        if (snapshot.metadata.hasPendingWrites) return;
 
-      if (!isFirstLoad) {
-        snapshot.docChanges().forEach((change) => {
-          if (change.type === 'added') {
-            const newMsg = change.doc.data();
-            setToastMessage(newMsg);
-            setShowToast(true);
-            setUnreadCount(prev => prev + 1);
+        if (!isFirstLoad) {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'added') {
+              const newMsg = change.doc.data();
+              setToastMessage(newMsg);
+              setShowToast(true);
+              setUnreadCount(prev => prev + 1);
 
-            // Play notification sound
-            try {
-              const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav');
-              audio.volume = 0.4;
-              audio.play().catch(() => {});
-            } catch (soundErr) {
-              console.log("Audio notification blocked or failed", soundErr);
+              // Play notification sound
+              try {
+                const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-600.wav');
+                audio.volume = 0.4;
+                audio.play().catch(() => {});
+              } catch (soundErr) {
+                console.log("Audio notification blocked or failed", soundErr);
+              }
+
+              // Auto-dismiss toast
+              setTimeout(() => {
+                setShowToast(false);
+              }, 6000);
             }
-
-            // Auto-dismiss toast
-            setTimeout(() => {
-              setShowToast(false);
-            }, 6000);
-          }
-        });
-      } else {
-        isFirstLoad = false;
+          });
+        } else {
+          isFirstLoad = false;
+        }
+      },
+      (error) => {
+        console.warn("Firestore real-time listener connection dropped or access denied:", error);
       }
-    });
+    );
 
     return () => unsubscribe();
   }, [isAuthenticated]);
@@ -153,6 +247,7 @@ const Admin = () => {
       const s = await getStats();
       const aw = await getAwards();
       const g = await getGalleryImages();
+      const inn = await getInnovations();
       const tk = await getTalks();
       const cs = await getContactSettings();
       const ms = await getContactMessages();
@@ -173,6 +268,7 @@ const Admin = () => {
       setStats(s);
       setAwards(aw);
       setGallery(g);
+      setInnovations(inn);
       setTalks(tk);
       setContactSettings(cs);
       setMessages(ms);
@@ -194,7 +290,7 @@ const Admin = () => {
     try {
       const file = e.target.resumeFile.files[0];
       if (!file) {
-        alert('Please select a PDF file first.');
+        showAdminToast('Please select a PDF file first.', true);
         return;
       }
       
@@ -203,11 +299,11 @@ const Admin = () => {
       const fileUrl = await getDownloadURL(storageRef);
       
       await saveResumeUrl(fileUrl);
-      alert('Resume PDF uploaded and saved successfully!');
+      showAdminToast('Resume PDF uploaded and saved successfully!');
       loadAllData();
     } catch (err) {
       console.error(err);
-      alert('Error uploading resume PDF.');
+      showAdminToast('Error uploading resume PDF.', true);
     } finally {
       setLoading(false);
     }
@@ -253,9 +349,9 @@ const Admin = () => {
     setLoading(true);
     try {
       await updateHeroContent(heroData);
-      alert('Hero section updated successfully!');
+      showAdminToast('Hero section updated successfully!');
     } catch (e) {
-      alert('Error updating Hero content.');
+      showAdminToast('Error updating Hero content.', true);
     } finally {
       setLoading(false);
     }
@@ -266,10 +362,28 @@ const Admin = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await updateAboutContent(aboutData);
-      alert('About section updated successfully!');
-    } catch (e) {
-      alert('Error updating About content.');
+      const formData = new FormData(e.target);
+      const data = Object.fromEntries(formData.entries());
+      
+      const strengthsArray = data.strengths
+        ? data.strengths.split(',').map(s => s.trim()).filter(Boolean)
+        : [];
+      
+      const payload = {
+        intro: data.intro,
+        eduBio: data.eduBio,
+        serviceBio: data.serviceBio,
+        corporateBio: data.corporateBio,
+        strengths: strengthsArray,
+        image: aboutData.image || ''
+      };
+
+      await updateAboutContent(payload);
+      setAboutData(payload);
+      showAdminToast('About section updated successfully!');
+    } catch (err) {
+      console.error(err);
+      showAdminToast('Error updating About content.', true);
     } finally {
       setLoading(false);
     }
@@ -288,7 +402,7 @@ const Admin = () => {
       return url;
     } catch (err) {
       setUploadProgress('Upload failed. Check console.');
-      alert(err.message || 'Image upload failed. Is ImgBB key configured?');
+      showAdminToast(err.message || 'Image upload failed. Is ImgBB key configured?', true);
       setTimeout(() => setUploadProgress(''), 3000);
     }
   };
@@ -310,7 +424,7 @@ const Admin = () => {
       
       // Enforce order indexing
       if (editingItem && editingItem.id) data.id = editingItem.id;
-      data.order = editingItem?.order || (getListByType(type).length + 1);
+      data.order = data.order ? Number(data.order) : (editingItem?.order || (getListByType(type).length + 1));
 
       // Handle specific fields
       if (type === 'gallery') {
@@ -322,7 +436,7 @@ const Admin = () => {
         } else if (editingItem && editingItem.image) {
           data.image = editingItem.image;
         } else {
-          alert('Please select an image.');
+          showAdminToast('Please select an image.', true);
           return;
         }
       }
@@ -367,12 +481,13 @@ const Admin = () => {
       }
 
       await saveFunc(data);
-      alert('Item saved successfully!');
+      showAdminToast('Item saved successfully!');
       setEditingItem(null);
+      clearPreview();
       loadAllData();
     } catch (err) {
       console.error(err);
-      alert('Error saving item.');
+      showAdminToast('Error saving item.', true);
     } finally {
       setLoading(false);
     }
@@ -384,9 +499,10 @@ const Admin = () => {
       setLoading(true);
       try {
         await deleteFunc(id);
+        showAdminToast('Item deleted successfully!');
         loadAllData();
       } catch (err) {
-        alert('Error deleting item.');
+        showAdminToast('Error deleting item.', true);
       } finally {
         setLoading(false);
       }
@@ -405,6 +521,7 @@ const Admin = () => {
     if (type === 'departments') return departments;
     if (type === 'caseStudies') return caseStudies;
     if (type === 'highlights') return highlights;
+    if (type === 'innovations') return innovations;
     return [];
   };
 
@@ -412,12 +529,12 @@ const Admin = () => {
     setLoading(true);
     try {
       await saveFunc(data);
-      alert('Item saved successfully!');
+      showAdminToast('Item saved successfully!');
       setEditingItem(null);
       loadAllData();
     } catch (err) {
       console.error(err);
-      alert('Error saving item.');
+      showAdminToast('Error saving item.', true);
     } finally {
       setLoading(false);
     }
@@ -425,6 +542,7 @@ const Admin = () => {
 
   // About profile image change handler
   const handleAboutImageChange = async (e) => {
+    handleLocalPreview(e);
     const url = await handleImageUpload(e, 'about');
     if (url) {
       setAboutData(prev => ({ ...prev, image: url }));
@@ -437,9 +555,9 @@ const Admin = () => {
     setLoading(true);
     try {
       await updateTalks(talks);
-      alert('Invited Talks updated successfully!');
+      showAdminToast('Invited Talks updated successfully!');
     } catch (e) {
-      alert('Error updating Invited Talks.');
+      showAdminToast('Error updating Invited Talks.', true);
     } finally {
       setLoading(false);
     }
@@ -451,9 +569,9 @@ const Admin = () => {
     setLoading(true);
     try {
       await updateContactSettings(contactSettings);
-      alert('General settings updated successfully!');
+      showAdminToast('General settings updated successfully!');
     } catch (e) {
-      alert('Error updating General settings.');
+      showAdminToast('Error updating General settings.', true);
     } finally {
       setLoading(false);
     }
@@ -467,9 +585,9 @@ const Admin = () => {
         await deleteContactMessage(id);
         const ms = await getContactMessages();
         setMessages(ms);
-        alert('Message deleted successfully!');
+        showAdminToast('Message deleted successfully!');
       } catch (err) {
-        alert('Error deleting message.');
+        showAdminToast('Error deleting message.', true);
       } finally {
         setLoading(false);
       }
@@ -527,10 +645,10 @@ const Admin = () => {
         urlInput.value = downloadUrl;
       }
       
-      alert('Video uploaded successfully! The URL has been filled in the form.');
+      showAdminToast('Video uploaded successfully! The URL has been filled in the form.');
     } catch (err) {
       console.error(err);
-      alert(err.message || 'Video upload or compression failed.');
+      showAdminToast(err.message || 'Video upload or compression failed.', true);
     } finally {
       setCompressingVideo(false);
       e.target.value = ''; // clear input
@@ -606,20 +724,60 @@ const Admin = () => {
         </div>
       )}
       
+      {/* Mobile Menu Backdrop */}
+      {isMobileMenuOpen && (
+        <div 
+          onClick={() => setIsMobileMenuOpen(false)}
+          className="fixed inset-0 bg-black/50 backdrop-blur-sm z-40 md:hidden"
+        />
+      )}
+
+      {/* Mobile Top Header */}
+      <header className="w-full bg-charcoal text-white p-4 flex justify-between items-center border-b border-[#2d2824] md:hidden sticky top-0 z-30">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={() => setIsMobileMenuOpen(true)}
+            className="p-2 text-white hover:text-secondary focus:outline-none"
+            aria-label="Open navigation menu"
+          >
+            <FaBars className="w-5 h-5" />
+          </button>
+          <h1 className="text-base font-black tracking-tight text-offwhite font-sans">
+            JSR Admin<span className="text-secondary">.</span>
+          </h1>
+        </div>
+        <button 
+          onClick={handleLogout} 
+          className="p-2 bg-white/5 hover:bg-primary rounded-lg text-white transition-colors"
+          title="Logout"
+        >
+          <FaSignOutAlt className="w-4 h-4" />
+        </button>
+      </header>
+
       {/* Sidebar Nav */}
-      <aside className="w-full md:w-64 bg-charcoal text-white flex flex-col justify-between shrink-0 p-6 md:min-h-screen border-r border-[#2d2824]">
+      <aside className={`fixed inset-y-0 left-0 z-50 w-64 bg-charcoal text-white flex flex-col justify-between shrink-0 p-6 border-r border-[#2d2824] transition-transform duration-300 md:sticky md:top-0 md:translate-x-0 ${isMobileMenuOpen ? 'translate-x-0' : '-translate-x-full'} md:flex md:h-screen`}>
         <div>
           <div className="flex justify-between items-center mb-10 pb-4 border-b border-white/10">
-            <h1 className="text-lg font-black tracking-tight text-offwhite">
+            <h1 className="text-lg font-black tracking-tight text-offwhite font-sans">
               JSR Admin<span className="text-secondary">.</span>
             </h1>
-            <button 
-              onClick={handleLogout} 
-              className="p-2 bg-white/5 hover:bg-primary rounded-lg text-white hover:text-white transition-colors"
-              title="Logout"
-            >
-              <FaSignOutAlt className="w-3.5 h-3.5" />
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setIsMobileMenuOpen(false)} 
+                className="md:hidden p-2 hover:bg-white/5 rounded-lg text-white/60 hover:text-white"
+                title="Close Menu"
+              >
+                <FaTimes className="w-3.5 h-3.5" />
+              </button>
+              <button 
+                onClick={handleLogout} 
+                className="p-2 bg-white/5 hover:bg-primary rounded-lg text-white hover:text-white transition-colors"
+                title="Logout"
+              >
+                <FaSignOutAlt className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           <nav className="flex flex-col gap-1.5 max-h-[70vh] overflow-y-auto pr-1">
@@ -628,6 +786,7 @@ const Admin = () => {
               { id: 'hero', label: 'Hero Slides', icon: <FaInfoCircle /> },
               { id: 'about', label: 'About & Strengths', icon: <FaAward /> },
               { id: 'services', label: 'Services Offered', icon: <FaLightbulb /> },
+              { id: 'innovations', label: 'Innovations & Tech', icon: <FaFlask /> },
               { id: 'departments', label: 'Collaborations', icon: <FaBuilding /> },
               { id: 'timeline', label: 'Career Journey', icon: <FaHistory /> },
               { id: 'caseStudies', label: 'Case Studies', icon: <FaBookOpen /> },
@@ -645,6 +804,7 @@ const Admin = () => {
                   setActiveTab(tab.id); 
                   setEditingItem(null); 
                   if (tab.id === 'messages') setUnreadCount(0); 
+                  setIsMobileMenuOpen(false);
                 }}
                 className={`w-full py-2 px-3.5 rounded-xl font-bold text-[11px] flex items-center gap-2.5 transition-all ${
                   activeTab === tab.id 
@@ -695,15 +855,15 @@ const Admin = () => {
             </div>
 
             {/* Aggregated Numbers Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
               {/* Card 1: Pageviews */}
               <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center gap-4">
                 <div className="w-12 h-12 rounded-2xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
                   <FaDesktop className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block">Total Pageviews</span>
-                  <span className="text-2xl font-black text-charcoal block mt-0.5">
+                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block text-left">Total Pageviews</span>
+                  <span className="text-2xl font-black text-charcoal block mt-0.5 text-left">
                     {analyticsSummary.reduce((sum, day) => sum + (day.pageviews || 0), 0)}
                   </span>
                 </div>
@@ -715,8 +875,8 @@ const Admin = () => {
                   <FaEnvelope className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block">Contacts Received</span>
-                  <span className="text-2xl font-black text-charcoal block mt-0.5">
+                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block text-left">Contacts Received</span>
+                  <span className="text-2xl font-black text-charcoal block mt-0.5 text-left">
                     {analyticsSummary.reduce((sum, day) => sum + (day.contactSubmissions || 0), 0)}
                   </span>
                 </div>
@@ -728,41 +888,96 @@ const Admin = () => {
                   <FaCommentDots className="w-6 h-6" />
                 </div>
                 <div>
-                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block">Chatbot Queries</span>
-                  <span className="text-2xl font-black text-charcoal block mt-0.5">
+                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block text-left">Chatbot Queries</span>
+                  <span className="text-2xl font-black text-charcoal block mt-0.5 text-left">
                     {analyticsSummary.reduce((sum, day) => sum + (day.chatbotMessages || 0), 0)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Card 4: Resume Downloads */}
-              <div className="bg-white p-6 rounded-3xl border border-gray-200 shadow-sm flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
-                  <FaFilePdf className="w-6 h-6" />
-                </div>
-                <div>
-                  <span className="text-[10px] font-bold text-neutraltext/60 uppercase tracking-wider block">CV Downloads</span>
-                  <span className="text-2xl font-black text-charcoal block mt-0.5">
-                    {analyticsSummary.reduce((sum, day) => sum + (day.resumeDownloads || 0), 0)}
                   </span>
                 </div>
               </div>
             </div>
 
-            {/* Split row: Most Viewed Gallery & Device breakdown */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            {/* Row 1: Trends SVG Graph and Most Viewed Gallery Photo */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              {/* Daily Visitor Trends SVG Graph */}
+              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col justify-between lg:col-span-2">
+                <div>
+                  <h3 className="text-base font-black text-charcoal text-left">Visitor Trends (Last 7 Days)</h3>
+                  <p className="text-xs text-neutraltext/60 mt-0.5 text-left">Timeline of daily pageviews and user engagement.</p>
+                </div>
+                <div className="my-6 min-h-[160px] w-full flex items-center justify-center">
+                  {analyticsSummary.length === 0 ? (
+                    <p className="text-xs text-neutraltext/60 font-medium">No visitor telemetry logged yet.</p>
+                  ) : (
+                    (() => {
+                      const sortedRollups = [...analyticsSummary]
+                        .sort((a, b) => a.date.localeCompare(b.date))
+                        .slice(-7);
+                      if (sortedRollups.length === 0) {
+                        return <p className="text-xs text-neutraltext/60 font-medium">No visitor telemetry logged yet.</p>;
+                      }
+                      const maxViews = Math.max(...sortedRollups.map(d => d.pageviews || 0), 1);
+                      return (
+                        <svg className="w-full h-full max-h-[140px]" viewBox="0 0 500 160" preserveAspectRatio="none">
+                          <defs>
+                            <linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+                              <stop offset="0%" stopColor="#C1440E" />
+                              <stop offset="100%" stopColor="#E8A33D" stopOpacity="0.2" />
+                            </linearGradient>
+                          </defs>
+                          {sortedRollups.map((day, idx) => {
+                            const x = 30 + idx * 65;
+                            const barHeight = ((day.pageviews || 0) / maxViews) * 95;
+                            const y = 120 - barHeight;
+                            return (
+                              <g key={idx}>
+                                <rect 
+                                  x={x} 
+                                  y={y} 
+                                  width="38" 
+                                  height={Math.max(barHeight, 4)} 
+                                  rx="4" 
+                                  fill="url(#barGrad)" 
+                                />
+                                <text 
+                                  x={x + 19} 
+                                  y={y - 8} 
+                                  textAnchor="middle" 
+                                  className="text-[9px] font-mono font-black fill-charcoal"
+                                >
+                                  {day.pageviews || 0}
+                                </text>
+                                <text 
+                                  x={x + 19} 
+                                  y="140" 
+                                  textAnchor="middle" 
+                                  className="text-[8px] font-mono font-bold fill-neutraltext/60"
+                                >
+                                  {day.date.split('-').slice(1).join('/')}
+                                </text>
+                              </g>
+                            );
+                          })}
+                          <line x1="10" y1="124" x2="490" y2="124" stroke="#e2e8f0" strokeWidth="1.5" />
+                        </svg>
+                      );
+                    })()
+                  )}
+                </div>
+                <div className="text-[10px] font-bold text-neutraltext/40 text-left">Visualized from daily aggregated analytics documents</div>
+              </div>
+
               {/* Most Viewed Gallery Image Card */}
               <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base font-black text-charcoal">Most Viewed Gallery Photo</h3>
-                  <p className="text-xs text-neutraltext/60 mt-0.5">Dynamically calculated from click events in photo lightbox.</p>
+                  <h3 className="text-base font-black text-charcoal text-left">Most Viewed Photo</h3>
+                  <p className="text-xs text-neutraltext/60 mt-0.5 text-left">Dynamically calculated from click events in photo lightbox.</p>
                 </div>
-                <div className="my-6 bg-offwhite/50 p-6 rounded-2xl border border-gray-100 flex flex-col sm:flex-row items-center gap-4">
-                  <div className="w-16 h-16 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
-                    <FaImage className="w-8 h-8" />
+                <div className="my-6 bg-offwhite/50 p-6 rounded-2xl border border-gray-100 flex flex-col items-center gap-4">
+                  <div className="w-14 h-14 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <FaImage className="w-6 h-6" />
                   </div>
-                  <div className="text-center sm:text-left">
-                    <h4 className="text-sm font-black text-charcoal leading-snug">{(() => {
+                  <div className="text-center">
+                    <h4 className="text-xs font-black text-charcoal leading-snug">{(() => {
                       const topItem = (() => {
                         const counts = {};
                         analyticsSummary.forEach(day => {
@@ -785,7 +1000,7 @@ const Admin = () => {
                       })();
                       return topItem.caption;
                     })()}</h4>
-                    <span className="text-[10px] font-bold text-neutraltext/60 mt-1 block">
+                    <span className="text-[9px] font-bold text-neutraltext/60 mt-1 block">
                       Total views: {(() => {
                         const topItem = (() => {
                           const counts = {};
@@ -812,18 +1027,20 @@ const Admin = () => {
                     </span>
                   </div>
                 </div>
-                <div className="text-[10px] font-bold text-neutraltext/40">Aggregated from consolidated rollups</div>
+                <div className="text-[10px] font-bold text-neutraltext/40 text-left">Aggregated from consolidated rollups</div>
               </div>
+            </div>
 
+            {/* Row 2: Device, Browser, and OS telemetry breakdowns */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               {/* Device Telemetry Card */}
               <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col justify-between">
                 <div>
-                  <h3 className="text-base font-black text-charcoal">Device Breakdown</h3>
-                  <p className="text-xs text-neutraltext/60 mt-0.5">Distribution of platform types accessing the portfolio.</p>
+                  <h3 className="text-base font-black text-charcoal text-left">Device Breakdown</h3>
+                  <p className="text-xs text-neutraltext/60 mt-0.5 text-left">Distribution of platform types accessing the portfolio.</p>
                 </div>
                 
-                {/* Horizontal Progress Bars */}
-                <div className="my-4 flex flex-col gap-3.5">
+                <div className="my-6 flex flex-col gap-3.5">
                   {(() => {
                     const devices = { Desktop: 0, Mobile: 0, Tablet: 0 };
                     analyticsSummary.forEach(day => {
@@ -869,7 +1086,170 @@ const Admin = () => {
                     );
                   })()}
                 </div>
-                <div className="text-[10px] font-bold text-neutraltext/40">Aggregated from consolidated rollups</div>
+                <div className="text-[10px] font-bold text-neutraltext/40 text-left">Aggregated from consolidated rollups</div>
+              </div>
+
+              {/* Browser Breakdown Card */}
+              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-black text-charcoal text-left">Browser Breakdown</h3>
+                  <p className="text-xs text-neutraltext/60 mt-0.5 text-left">Distribution of web browsers used by visitors.</p>
+                </div>
+                
+                <div className="my-6 flex flex-col gap-3.5">
+                  {(() => {
+                    const browsers = { Chrome: 0, Safari: 0, Firefox: 0, Edge: 0, Others: 0 };
+                    analyticsSummary.forEach(day => {
+                      browsers.Chrome += day.browser_Chrome || 0;
+                      browsers.Safari += day.browser_Safari || 0;
+                      browsers.Firefox += day.browser_Firefox || 0;
+                      browsers.Edge += day.browser_Edge || 0;
+                      
+                      Object.keys(day).forEach(key => {
+                        if (key.startsWith('browser_') && !['browser_Chrome', 'browser_Safari', 'browser_Firefox', 'browser_Edge'].includes(key)) {
+                          browsers.Others += day[key] || 0;
+                        }
+                      });
+                    });
+                    const total = browsers.Chrome + browsers.Safari + browsers.Firefox + browsers.Edge + browsers.Others || 1;
+                    const pctChrome = Math.round((browsers.Chrome / total) * 100);
+                    const pctSafari = Math.round((browsers.Safari / total) * 100);
+                    const pctFirefox = Math.round((browsers.Firefox / total) * 100);
+                    const pctEdge = Math.round((browsers.Edge / total) * 100);
+                    const pctOthers = Math.round((browsers.Others / total) * 100);
+
+                    return (
+                      <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto pr-1">
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Chrome ({browsers.Chrome})</span>
+                            <span>{pctChrome}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-primary h-full rounded-full" style={{ width: `${pctChrome}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Safari ({browsers.Safari})</span>
+                            <span>{pctSafari}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-blue-500 h-full rounded-full" style={{ width: `${pctSafari}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Firefox ({browsers.Firefox})</span>
+                            <span>{pctFirefox}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-orange-500 h-full rounded-full" style={{ width: `${pctFirefox}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Edge ({browsers.Edge})</span>
+                            <span>{pctEdge}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-teal-500 h-full rounded-full" style={{ width: `${pctEdge}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Others ({browsers.Others})</span>
+                            <span>{pctOthers}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-gray-400 h-full rounded-full" style={{ width: `${pctOthers}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="text-[10px] font-bold text-neutraltext/40 text-left">Aggregated from consolidated rollups</div>
+              </div>
+
+              {/* OS Breakdown Card */}
+              <div className="bg-white p-6 md:p-8 rounded-[2rem] border border-gray-200 shadow-sm flex flex-col justify-between">
+                <div>
+                  <h3 className="text-base font-black text-charcoal text-left">OS Breakdown</h3>
+                  <p className="text-xs text-neutraltext/60 mt-0.5 text-left">Distribution of client operating systems.</p>
+                </div>
+                
+                <div className="my-6 flex flex-col gap-3.5">
+                  {(() => {
+                    const osList = { Windows: 0, MacOS: 0, iOS: 0, Android: 0, Linux: 0, Others: 0 };
+                    analyticsSummary.forEach(day => {
+                      Object.keys(day).forEach(key => {
+                        if (key.startsWith('os_')) {
+                          const osName = key.replace('os_', '');
+                          const resolvedOs = osName === 'MacOS' ? 'MacOS' : (osName === 'Windows' ? 'Windows' : (osName === 'iOS' ? 'iOS' : (osName === 'Android' ? 'Android' : (osName === 'Linux' ? 'Linux' : 'Others'))));
+                          osList[resolvedOs] = (osList[resolvedOs] || 0) + day[key];
+                        }
+                      });
+                    });
+                    const total = osList.Windows + osList.MacOS + osList.iOS + osList.Android + osList.Linux + osList.Others || 1;
+                    const pctWin = Math.round((osList.Windows / total) * 100);
+                    const pctMac = Math.round((osList.MacOS / total) * 100);
+                    const pctIos = Math.round((osList.iOS / total) * 100);
+                    const pctAnd = Math.round((osList.Android / total) * 100);
+                    const pctLin = Math.round((osList.Linux / total) * 100);
+
+                    return (
+                      <div className="flex flex-col gap-2 max-h-[180px] overflow-y-auto pr-1">
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Windows ({osList.Windows})</span>
+                            <span>{pctWin}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-blue-600 h-full rounded-full" style={{ width: `${pctWin}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>MacOS ({osList.MacOS})</span>
+                            <span>{pctMac}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-purple-500 h-full rounded-full" style={{ width: `${pctMac}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>iOS ({osList.iOS})</span>
+                            <span>{pctIos}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-pink-500 h-full rounded-full" style={{ width: `${pctIos}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Android ({osList.Android})</span>
+                            <span>{pctAnd}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-green-500 h-full rounded-full" style={{ width: `${pctAnd}%` }} />
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-0.5 text-left">
+                          <div className="flex justify-between text-[11px] font-bold">
+                            <span>Linux/Others ({osList.Linux + osList.Others})</span>
+                            <span>{100 - pctWin - pctMac - pctIos - pctAnd}%</span>
+                          </div>
+                          <div className="w-full bg-gray-100 h-2 rounded-full overflow-hidden">
+                            <div className="bg-gray-500 h-full rounded-full" style={{ width: `${100 - pctWin - pctMac - pctIos - pctAnd}%` }} />
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })()}
+                </div>
+                <div className="text-[10px] font-bold text-neutraltext/40 text-left">Aggregated from consolidated rollups</div>
               </div>
             </div>
 
@@ -978,12 +1358,21 @@ const Admin = () => {
                         type="file" 
                         accept="image/*" 
                         name="imageFile"
+                        onChange={handleLocalPreview}
                         className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
                       />
-                      {uploadProgress && <p className="text-primary text-[10px] font-bold mt-1 animate-pulse">{uploadProgress}</p>}
-                      {editingItem.imageUrl && (
+                      {uploadProgress && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 border border-primary/10 rounded-xl p-2 max-w-xs animate-pulse">
+                          <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{uploadProgress}</span>
+                        </div>
+                      )}
+                      {(imagePreviewUrl || editingItem.imageUrl) && (
                         <div className="w-16 h-12 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                          <img src={editingItem.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                          <img src={imagePreviewUrl || editingItem.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                         </div>
                       )}
                     </div>
@@ -1001,8 +1390,8 @@ const Admin = () => {
                   </div>
 
                   <div className="flex justify-end gap-3 mt-4">
-                    <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Slide</button>
+                    <button type="button" disabled={loading} onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold disabled:opacity-50">Cancel</button>
+                    <AdminSaveButton loading={loading} label="Save Slide" />
                   </div>
                 </form>
               </div>
@@ -1044,104 +1433,63 @@ const Admin = () => {
             <h2 className="text-2xl font-black mb-6 border-b pb-3">Edit About & Core Strengths</h2>
             <form onSubmit={handleAboutSave} className="flex flex-col gap-5">
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Bio Paragraph 1 *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Intro Tagline *</label>
                 <textarea 
-                  required
-                  rows="4"
-                  value={aboutData.bio1}
-                  onChange={(e) => setAboutData({ ...aboutData, bio1: e.target.value })}
-                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-primary transition-all"
+                  required name="intro" rows="2" defaultValue={aboutData.intro}
+                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
                 />
               </div>
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Bio Paragraph 2 *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Educational & Early Career Excellence Bio *</label>
                 <textarea 
-                  required
-                  rows="4"
-                  value={aboutData.bio2}
-                  onChange={(e) => setAboutData({ ...aboutData, bio2: e.target.value })}
-                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-primary transition-all"
+                  required name="eduBio" rows="4" defaultValue={aboutData.eduBio}
+                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
                 />
               </div>
-
               <div className="flex flex-col gap-1.5">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Bio Paragraph 3 *</label>
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Public Service & Environmental Advocacy Bio *</label>
                 <textarea 
-                  required
-                  rows="4"
-                  value={aboutData.bio3 || ''}
-                  onChange={(e) => setAboutData({ ...aboutData, bio3: e.target.value })}
-                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:border-primary transition-all"
+                  required name="serviceBio" rows="4" defaultValue={aboutData.serviceBio}
+                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
                 />
               </div>
-
-              <div className="flex flex-col gap-3">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Manage Strengths Chips</label>
-                <div className="flex flex-wrap gap-2 mb-3 bg-offwhite/40 p-4 rounded-xl border border-gray-100">
-                  {(aboutData.strengths || []).map((str, idx) => (
-                    <span 
-                      key={idx}
-                      className="px-3 py-1 bg-charcoal text-white text-[10px] font-bold rounded-full flex items-center gap-2"
-                    >
-                      {str}
-                      <button 
-                        type="button" 
-                        onClick={() => {
-                          const updated = (aboutData.strengths || []).filter((_, i) => i !== idx);
-                          setAboutData({ ...aboutData, strengths: updated });
-                        }}
-                        className="text-primary hover:text-white"
-                      >
-                        &times;
-                      </button>
-                    </span>
-                  ))}
-                </div>
-                
-                <div className="flex gap-2">
-                  <input 
-                    type="text" 
-                    value={newStrength}
-                    onChange={(e) => setNewStrength(e.target.value)}
-                    placeholder="Add new strength chip..."
-                    className="flex-1 bg-offwhite/50 border border-gray-200 rounded-xl px-4 py-2 text-xs focus:outline-none focus:border-primary"
-                  />
-                  <button 
-                    type="button" 
-                    onClick={() => {
-                      if (newStrength.trim()) {
-                        setAboutData({ ...aboutData, strengths: [...aboutData.strengths, newStrength.trim()] });
-                        setNewStrength('');
-                      }
-                    }}
-                    className="px-4 py-2 bg-secondary text-charcoal font-bold text-xs rounded-xl flex items-center gap-1 hover:bg-secondary/90 shadow-sm"
-                  >
-                    <FaPlus /> Add
-                  </button>
-                </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Corporate & Strategic Leadership Bio *</label>
+                <textarea 
+                  required name="corporateBio" rows="4" defaultValue={aboutData.corporateBio}
+                  className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                />
               </div>
-
-              <div className="flex flex-col gap-2 border-t pt-4 mt-2">
-                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext font-sans">Profile Picture (badge photo)</label>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Core Strengths (comma-separated) *</label>
+                <input 
+                  type="text" required name="strengths" defaultValue={(aboutData.strengths || []).join(', ')}
+                  className="bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                />
+              </div>
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext">Profile Photo (compressed target: under 300KB + ImgBB)</label>
                 <input 
                   type="file" accept="image/*" onChange={handleAboutImageChange}
                   className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
                 />
-                {uploadProgress && <p className="text-primary text-[10px] font-bold mt-1 animate-pulse">{uploadProgress}</p>}
-                {aboutData.image && (
+                {uploadProgress && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 border border-primary/10 rounded-xl p-2 max-w-xs animate-pulse">
+                          <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{uploadProgress}</span>
+                        </div>
+                      )}
+                {(imagePreviewUrl || aboutData.image) && (
                   <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                    <img src={aboutData.image} alt="Profile Preview" className="w-full h-full object-cover" />
+                    <img src={imagePreviewUrl || aboutData.image} alt="Profile Preview" className="w-full h-full object-cover" />
                   </div>
                 )}
               </div>
 
-              <button 
-                type="submit" 
-                className="py-3 px-6 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-md self-start flex items-center gap-2"
-              >
-                <FaSave />
-                Save About Changes
-              </button>
+              <AdminSaveButton loading={loading} label="Save About Changes" className="py-3" />
             </form>
           </div>
         )}
@@ -1199,7 +1547,7 @@ const Admin = () => {
                   </div>
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Stop</button>
+                    <AdminSaveButton loading={loading} label="Save Stop" />
                   </div>
                 </form>
               </div>
@@ -1207,8 +1555,8 @@ const Admin = () => {
 
             {/* List */}
             <div className="grid grid-cols-1 gap-4">
-              {timeline.map((stop) => (
-                <div key={stop.id} className="bg-white p-6 rounded-2xl border border-gray-200 flex justify-between items-center shadow-sm">
+              {timeline.map((stop, idx) => (
+                <div key={stop.id || idx} className="bg-white p-6 rounded-2xl border border-gray-200 flex justify-between items-center shadow-sm">
                   <div>
                     <span className="text-[10px] font-bold font-mono text-primary bg-primary/5 px-3 py-1 rounded-full uppercase tracking-wider">{stop.number}</span>
                     <h3 className="text-base font-black text-charcoal mt-2">{stop.title}</h3>
@@ -1278,7 +1626,7 @@ const Admin = () => {
                   </div>
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Service</button>
+                    <AdminSaveButton loading={loading} label="Save Service" />
                   </div>
                 </form>
               </div>
@@ -1286,8 +1634,8 @@ const Admin = () => {
 
             {/* List */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-              {services.map((svc) => (
-                <div key={svc.id} className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between p-6">
+              {services.map((svc, idx) => (
+                <div key={svc.id || idx} className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between p-6">
                   <div>
                     <span className="text-[10px] font-black text-secondary bg-primary/5 border border-primary/20 px-3 py-1 rounded-full uppercase tracking-wider">{svc.icon}</span>
                     <h3 className="text-lg font-black text-charcoal mt-3">{svc.title}</h3>
@@ -1298,6 +1646,79 @@ const Admin = () => {
                     <div className="flex items-center gap-2">
                       <button onClick={() => setEditingItem({ type: 'services', ...svc })} className="p-2 bg-white hover:bg-secondary rounded-lg transition-colors text-charcoal border border-gray-200"><FaEdit className="w-3.5 h-3.5" /></button>
                       <button onClick={() => handleDeleteItem(svc.id, deleteService)} className="p-2 bg-white hover:bg-primary hover:text-white rounded-lg transition-colors text-charcoal border border-gray-200"><FaTrash className="w-3.5 h-3.5" /></button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Innovations & Technological Solutions Management */}
+        {activeTab === 'innovations' && (
+          <div className="flex flex-col gap-8">
+            <div className="flex justify-between items-center bg-white p-6 rounded-[1.5rem] border border-gray-200 shadow-sm">
+              <div>
+                <h2 className="text-xl font-black text-charcoal">Innovations & Tech Solutions</h2>
+                <p className="text-xs text-neutraltext font-medium mt-1">Manage Innovations & Tech Solutions displayed in the About section.</p>
+              </div>
+              <button 
+                onClick={() => setEditingItem({ type: 'innovations', order: innovations.length + 1 })}
+                className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-full shadow-md flex items-center gap-2"
+              >
+                <FaPlus /> Add Innovation
+              </button>
+            </div>
+
+            {/* Editing Form */}
+            {editingItem && editingItem.type === 'innovations' && (
+              <div className="bg-white p-8 rounded-[2rem] border border-secondary/30 shadow-md">
+                <h3 className="text-lg font-black mb-6">{editingItem.id ? 'Edit Innovation' : 'Create Innovation'}</h3>
+                <form onSubmit={(e) => handleSaveItem(e, 'innovations', saveInnovation)} className="flex flex-col gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Title *</label>
+                      <input 
+                        type="text" required name="title" defaultValue={editingItem.title} placeholder="e.g. Solar Cloth Bag Vending Machine"
+                        className="bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                    <div className="flex flex-col gap-1">
+                      <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Order *</label>
+                      <input 
+                        type="number" required name="order" defaultValue={editingItem.order || 1}
+                        className="bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Description *</label>
+                    <textarea 
+                      required name="description" rows="3" defaultValue={editingItem.description} placeholder="Innovation details..."
+                      className="w-full bg-offwhite/50 border border-gray-200 rounded-xl p-3 text-xs focus:outline-none focus:border-primary"
+                    />
+                  </div>
+                  <div className="flex justify-end gap-3 mt-4">
+                    <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
+                    <AdminSaveButton loading={loading} label="Save Innovation" />
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {/* List */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {innovations.map((inn, idx) => (
+                <div key={inn.id || idx} className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between p-6">
+                  <div>
+                    <h3 className="text-lg font-black text-charcoal">{inn.title}</h3>
+                    <p className="text-xs text-neutraltext font-medium mt-2 leading-relaxed">{inn.description}</p>
+                  </div>
+                  <div className="mt-4 pt-4 border-t border-gray-100 flex justify-between items-center">
+                    <span className="text-[10px] font-mono text-neutraltext">Order: {inn.order}</span>
+                    <div className="flex items-center gap-2">
+                      <button onClick={() => setEditingItem({ type: 'innovations', ...inn })} className="p-2 bg-white hover:bg-secondary rounded-lg transition-colors text-charcoal border border-gray-200"><FaEdit className="w-3.5 h-3.5" /></button>
+                      <button onClick={() => handleDeleteItem(inn.id, deleteInnovation)} className="p-2 bg-white hover:bg-primary hover:text-white rounded-lg transition-colors text-charcoal border border-gray-200"><FaTrash className="w-3.5 h-3.5" /></button>
                     </div>
                   </div>
                 </div>
@@ -1352,16 +1773,16 @@ const Admin = () => {
                   </div>
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Collaboration</button>
+                    <AdminSaveButton loading={loading} label="Save Collaboration" />
                   </div>
                 </form>
               </div>
             )}
 
             {/* List */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-6">
-              {departments.map((dept) => (
-                <div key={dept.id} className="bg-white rounded-3xl border border-gray-200 p-6 flex flex-col justify-between shadow-sm text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+              {departments.map((dept, idx) => (
+                <div key={dept.id || idx} className="bg-white rounded-3xl border border-gray-200 p-6 flex flex-col justify-between shadow-sm text-center">
                   <div className="flex flex-col items-center gap-4">
                     {dept.logo ? (
                       <img src={dept.logo} alt={dept.name} className="h-12 w-auto object-contain" />
@@ -1424,15 +1845,15 @@ const Admin = () => {
                     </div>
                     <div className="flex justify-end gap-3 mt-4">
                       <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                      <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Stat</button>
+                      <AdminSaveButton loading={loading} label="Save Stat" />
                     </div>
                   </form>
                 </div>
               )}
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-                {stats.map(st => (
-                  <div key={st.id} className="bg-white p-5 rounded-2xl border border-gray-200 text-center relative group shadow-sm">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-4">
+                {stats.map((st, idx) => (
+                  <div key={st.id || idx} className="bg-white p-5 rounded-2xl border border-gray-200 text-center relative group shadow-sm">
                     <h3 className="text-2xl font-black text-primary">{st.value}</h3>
                     <p className="text-[10px] font-bold text-charcoal mt-1 leading-snug">{st.label}</p>
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
@@ -1498,27 +1919,36 @@ const Admin = () => {
                         <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Award Photo / Certificate (under 500KB + ImgBB)</label>
                         <input 
                           type="file" accept="image/*" name="imageFile"
+                          onChange={handleLocalPreview}
                           className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
                         />
-                        {uploadProgress && <p className="text-primary text-[10px] font-bold mt-1 animate-pulse">{uploadProgress}</p>}
-                        {editingItem.image && (
+                        {uploadProgress && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 border border-primary/10 rounded-xl p-2 max-w-xs animate-pulse">
+                          <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{uploadProgress}</span>
+                        </div>
+                      )}
+                        {(imagePreviewUrl || editingItem.image) && (
                           <div className="w-12 h-12 rounded-lg overflow-hidden border border-gray-200 mt-1">
-                            <img src={editingItem.image} alt="Preview" className="w-full h-full object-cover" />
+                            <img src={imagePreviewUrl || editingItem.image} alt="Preview" className="w-full h-full object-cover" />
                           </div>
                         )}
                       </div>
                     </div>
                     <div className="flex justify-end gap-3 mt-4">
-                      <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                      <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Award</button>
+                      <button type="button" disabled={loading} onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold disabled:opacity-50">Cancel</button>
+                      <AdminSaveButton loading={loading} label="Save Award" />
                     </div>
                   </form>
                 </div>
               )}
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {awards.map(aw => (
-                  <div key={aw.id} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex justify-between items-center gap-4">
+                {awards.map((aw, idx) => (
+                  <div key={aw.id || idx} className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm flex justify-between items-center gap-4">
                     <div className="flex items-start gap-4 flex-1">
                       {aw.image && (
                         <div className="w-14 h-14 rounded-xl overflow-hidden border border-gray-100 shrink-0 shadow-sm">
@@ -1593,13 +2023,7 @@ const Admin = () => {
                     </button>
                   </div>
 
-                  <button 
-                    type="submit" 
-                    className="py-2.5 px-5 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-md self-start flex items-center gap-2 mt-2"
-                  >
-                    <FaSave />
-                    Save Talks List
-                  </button>
+                  <AdminSaveButton loading={loading} label="Save Talks List" />
                 </form>
               </div>
             </div>
@@ -1640,28 +2064,37 @@ const Admin = () => {
                       <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext">Image File (Image compressor: under 500KB + ImgBB upload)</label>
                       <input 
                         type="file" accept="image/*" name="imageFile"
+                        onChange={handleLocalPreview}
                         className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
                       />
-                      {uploadProgress && <p className="text-primary text-[10px] font-bold mt-1 animate-pulse">{uploadProgress}</p>}
+                      {uploadProgress && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 border border-primary/10 rounded-xl p-2 max-w-xs animate-pulse">
+                          <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{uploadProgress}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  {editingItem.image && (
+                  {(imagePreviewUrl || editingItem.image) && (
                     <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                      <img src={editingItem.image} alt="Preview" className="w-full h-full object-cover" />
+                      <img src={imagePreviewUrl || editingItem.image} alt="Preview" className="w-full h-full object-cover" />
                     </div>
                   )}
                   <div className="flex justify-end gap-3 mt-4">
-                    <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Image</button>
+                    <button type="button" disabled={loading} onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold disabled:opacity-50">Cancel</button>
+                    <AdminSaveButton loading={loading} label="Save Image" />
                   </div>
                 </form>
               </div>
             )}
 
             {/* List */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-5 gap-4">
-              {gallery.map((img) => (
-                <div key={img.id} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm relative group flex flex-col justify-between">
+            <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-4">
+              {gallery.map((img, idx) => (
+                <div key={img.id || idx} className="bg-white border border-gray-200 rounded-2xl overflow-hidden shadow-sm relative group flex flex-col justify-between">
                   <div className="aspect-square bg-gray-50 overflow-hidden relative">
                     <img src={img.image} alt={img.caption} className="w-full h-full object-cover" />
                     <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 flex gap-1 transition-opacity">
@@ -1743,7 +2176,7 @@ const Admin = () => {
 
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Testimonial</button>
+                    <AdminSaveButton loading={loading} label="Save Testimonial" />
                   </div>
                 </form>
               </div>
@@ -1835,12 +2268,21 @@ const Admin = () => {
                     <label className="text-[10px] font-bold uppercase tracking-wider text-neutraltext font-sans">Clipping / Thumbnail Photo (Optional, compressed under 300KB)</label>
                     <input 
                       type="file" accept="image/*" name="imageFile"
+                      onChange={handleLocalPreview}
                       className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
                     />
-                    {uploadProgress && <p className="text-primary text-[10px] font-bold mt-1 animate-pulse">{uploadProgress}</p>}
-                    {editingItem.image && (
+                    {uploadProgress && (
+                        <div className="flex items-center gap-2 mt-2 bg-primary/5 border border-primary/10 rounded-xl p-2 max-w-xs animate-pulse">
+                          <svg className="animate-spin h-3.5 w-3.5 text-primary" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px] font-bold text-primary uppercase tracking-wider">{uploadProgress}</span>
+                        </div>
+                      )}
+                    {(imagePreviewUrl || editingItem.image) && (
                       <div className="w-24 h-16 rounded-lg overflow-hidden border border-gray-200 mt-2">
-                        <img src={editingItem.image} alt="Preview" className="w-full h-full object-cover" />
+                        <img src={imagePreviewUrl || editingItem.image} alt="Preview" className="w-full h-full object-cover" />
                       </div>
                     )}
                   </div>
@@ -1854,8 +2296,8 @@ const Admin = () => {
                   </div>
 
                   <div className="flex justify-end gap-3 mt-4">
-                    <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Mention</button>
+                    <button type="button" disabled={loading} onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold disabled:opacity-50">Cancel</button>
+                    <AdminSaveButton loading={loading} label="Save Mention" />
                   </div>
                 </form>
               </div>
@@ -2001,7 +2443,7 @@ const Admin = () => {
 
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Case Study</button>
+                    <AdminSaveButton loading={loading} label="Save Case Study" />
                   </div>
                 </form>
               </div>
@@ -2009,8 +2451,8 @@ const Admin = () => {
 
             {/* List */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {caseStudies.map((cs) => (
-                <div key={cs.id} className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between p-6">
+              {caseStudies.map((cs, idx) => (
+                <div key={cs.id || idx} className="bg-white rounded-3xl border border-gray-200 overflow-hidden shadow-sm flex flex-col justify-between p-6">
                   <div>
                     <div className="flex gap-1.5 flex-wrap">
                       {cs.tags?.map((t, i) => (
@@ -2089,7 +2531,7 @@ const Admin = () => {
                   </div>
                   <div className="flex justify-end gap-3 mt-4">
                     <button type="button" onClick={() => setEditingItem(null)} className="px-5 py-2 rounded-full border border-gray-200 text-xs font-bold">Cancel</button>
-                    <button type="submit" className="px-6 py-2 rounded-full bg-primary text-white text-xs font-bold shadow-md">Save Highlight</button>
+                    <AdminSaveButton loading={loading} label="Save Highlight" />
                   </div>
                 </form>
               </div>
@@ -2097,8 +2539,8 @@ const Admin = () => {
 
             {/* List */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-              {highlights.map((hl) => (
-                <div key={hl.id} className="bg-white rounded-3xl border border-gray-200 p-6 flex flex-col justify-between shadow-sm">
+              {highlights.map((hl, idx) => (
+                <div key={hl.id || idx} className="bg-white rounded-3xl border border-gray-200 p-6 flex flex-col justify-between shadow-sm">
                   <div>
                     <div className="flex justify-between items-start">
                       <span className="text-[10px] font-black text-secondary bg-primary/5 px-3 py-1 rounded-full uppercase tracking-wider">{hl.icon}</span>
@@ -2212,13 +2654,7 @@ const Admin = () => {
                 </div>
               </div>
 
-              <button 
-                type="submit" 
-                className="py-3 px-6 rounded-full bg-primary hover:bg-primary/95 text-white font-bold text-xs shadow-md self-start flex items-center gap-2 mt-4"
-              >
-                <FaSave />
-                Save Settings Changes
-              </button>
+              <AdminSaveButton loading={loading} label="Save Settings Changes" className="py-3 mt-4" />
             </form>
           </div>
         )}
@@ -2313,6 +2749,15 @@ const Admin = () => {
           >
             View in Messages
           </button>
+        </div>
+      )}
+      {/* Admin Operations Toast */}
+      {adminToast && (
+        <div className={`fixed bottom-6 right-6 z-[100000] text-white rounded-2xl p-4 shadow-2xl max-w-sm flex items-center justify-between gap-3 border transition-all duration-300 ${adminToast.isError ? 'bg-red-600 border-red-500' : 'bg-green-600 border-green-500'}`}>
+          <div className="flex items-center gap-2 text-left">
+            <span className="text-xs font-bold font-sans">{adminToast.text}</span>
+          </div>
+          <button onClick={() => setAdminToast(null)} className="text-white/60 hover:text-white text-sm font-bold">&times;</button>
         </div>
       )}
     </div>

@@ -65,22 +65,30 @@ export default async function handler(req, res) {
     const statsSnap = await db.collection('stats').get();
     const stats = statsSnap.docs.map(d => d.data()).sort((a, b) => (a.order || 0) - (b.order || 0));
 
+    const innovationsSnap = await db.collection('innovations').get();
+    const innovations = innovationsSnap.docs.map(d => d.data()).sort((a, b) => (a.order || 0) - (b.order || 0));
+
     // 2. Build the System Prompt
     const systemPrompt = `You are JSR Annamayya's personal AI Assistant. Answer questions professionally, politely, and truthfully based only on his profile details below.
 
-About:
-${aboutData.bio1}
-${aboutData.bio2}
-Strengths: ${aboutData.strengths?.join(', ') || ''}
+About JSR Annamayya:
+- Intro / Tagline: ${aboutData.intro || ''}
+- Educational & Early Career Excellence: ${aboutData.eduBio || ''}
+- Public Service & Environmental Advocacy: ${aboutData.serviceBio || ''}
+- Corporate & Strategic Leadership: ${aboutData.corporateBio || ''}
+- Strengths: ${aboutData.strengths?.join(', ') || ''}
 
-Key Metrics:
+Innovations & Technological Solutions:
+${innovations.map(inn => `- ${inn.title}: ${inn.description}`).join('\n')}
+
+Key Metrics & Stats:
 ${stats.map(s => `- ${s.value} ${s.label}`).join('\n')}
 
 Career Journey Timeline:
-${timeline.map(t => `- ${t.number}: ${t.title} (${t.subtitle}) - ${t.text}`).join('\n')}
+${timeline.map(t => `- ${t.number || t.year || ''}: ${t.title || ''} (${t.subtitle || ''}) - ${t.text || ''}`).join('\n')}
 
 Key Impact & Awards:
-${awards.map(a => `- ${a.title} (${a.year}) issued by ${a.issuer}: ${a.desc}`).join('\n')}
+${awards.map(a => `- ${a.title || ''} (${a.year || ''}) issued by ${a.issuer || ''}: ${a.desc || a.description || ''}`).join('\n')}
 
 Guidelines:
 - Keep responses short, concise, and conversational (max 2-3 sentences).
@@ -90,10 +98,6 @@ Guidelines:
     // 3. Prepare Gemini API Request Body
     const chatHistory = history || [];
     const contents = [
-      {
-        role: 'user',
-        parts: [{ text: systemPrompt }]
-      },
       ...chatHistory.map(h => ({
         role: h.role === 'user' ? 'user' : 'model',
         parts: [{ text: h.text }]
@@ -104,13 +108,20 @@ Guidelines:
       }
     ];
 
-    // 4. Send request to Gemini API
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${geminiApiKey}`, {
+    const body = {
+      contents,
+      systemInstruction: {
+        parts: [{ text: systemPrompt }]
+      }
+    };
+
+    // 4. Send request to Gemini API (using stable gemini-1.5-flash)
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiApiKey}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify({ contents })
+      body: JSON.stringify(body)
     });
 
     const data = await response.json();

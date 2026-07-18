@@ -91,7 +91,7 @@ const JourneyTimeline = () => {
     fetchTimeline();
   }, []);
 
-  const desktopHeight = Math.max(1000, 300 + timelineStops.length * 340);
+  const desktopHeight = Math.max(1200, 520 + timelineStops.length * 340);
 
   return (
     <section 
@@ -239,10 +239,24 @@ const JourneyTimeline = () => {
 
           {timelineStops.length > 0 && (
             <div 
+              data-aos="fade-up" 
+              className="w-full max-w-3xl px-6 text-center mx-auto mt-16 md:mt-0 md:absolute md:left-1/2 md:-translate-x-1/2 flex flex-col items-center justify-center"
+              style={{ top: `${50 + timelineStops.length * 340}px` }}
+            >
+              <div className="w-16 h-[2px] bg-primary/20 mb-6"></div>
+              <p className="text-sm sm:text-base md:text-lg font-semibold text-neutraltext italic leading-relaxed font-sans max-w-2xl">
+                "I never set out to change how a city breathes, or how a family teaches its children to care for the earth — I only wanted to build things that mattered. What began as circuits and classrooms slowly turned into conversations with sanitation workers, mothers, students, and officers who believed, like I did, that small daily habits could rewrite a community's future. Every step since has been guided by one quiet conviction: real change doesn't arrive with announcements. It arrives one person, one habit, one act of care at a time."
+              </p>
+              <div className="w-16 h-[2px] bg-primary/20 mt-6"></div>
+            </div>
+          )}
+
+          {timelineStops.length > 0 && (
+            <div 
               data-aos="fade-in" 
-              data-aos-delay="600"
-              className="hidden md:block absolute font-serif italic text-2xl text-primary font-bold rotate-2"
-              style={{ top: `${desktopHeight - 80}px`, left: '55%' }}
+              data-aos-delay="400"
+              className="font-serif italic text-xl md:text-2xl text-primary font-bold mt-12 md:mt-0 md:absolute rotate-1 text-center w-full"
+              style={{ top: `${50 + timelineStops.length * 340 + 240}px`, left: '0px' }}
             >
               Ready for what's next!
             </div>
