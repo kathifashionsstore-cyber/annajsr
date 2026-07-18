@@ -166,7 +166,7 @@ const ChatbotWidget = () => {
         onClick={() => setIsOpen(!isOpen)}
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
-        className={`fixed left-6 bottom-28 md:left-auto md:right-24 md:bottom-8 w-12 h-12 rounded-full bg-charcoal border border-[#E8A33D]/20 text-[#E8A33D] flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.5)] focus:outline-none z-50 ${
+        className={`fixed right-6 bottom-60 md:left-auto md:right-24 md:bottom-8 w-12 h-12 rounded-full bg-charcoal border border-[#E8A33D]/20 text-[#E8A33D] flex items-center justify-center shadow-[0_8px_30px_rgba(0,0,0,0.5)] focus:outline-none z-50 ${
           isOpen ? 'bg-primary border-transparent text-white' : 'hover:border-[#E8A33D]/50'
         }`}
         aria-label="Open AI Assistant"

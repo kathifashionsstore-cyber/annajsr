@@ -141,7 +141,7 @@ const Hero = () => {
           onTouchStart={() => setIsHovered(true)}
           onTouchEnd={() => setIsHovered(false)}
         >
-          <div className="relative w-full max-w-[280px] aspect-[4/3] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.5)] bg-[#2a2622]">
+          <div className="relative w-[98%] max-w-[460px] aspect-[4/3] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_15px_30px_rgba(0,0,0,0.5)] bg-[#2a2622]">
             <AnimatePresence mode="wait">
               <motion.img
                 key={currentImageIndex}
@@ -231,7 +231,7 @@ const Hero = () => {
           onTouchStart={() => setIsHovered(true)}
           onTouchEnd={() => setIsHovered(false)}
         >
-          <div className="relative w-full max-w-[400px] aspect-[4/5] z-10">
+          <div className="relative w-full max-w-[400px] lg:max-w-[430px] aspect-[4/5] z-10">
             
             {/* A. Blurred offset double backdrop shadow layer */}
             <div className="absolute inset-4 rounded-[4rem_3rem_6rem_4rem] overflow-hidden blur-2xl opacity-40 scale-95 translate-x-6 translate-y-6 z-0 pointer-events-none transition-all duration-700">
