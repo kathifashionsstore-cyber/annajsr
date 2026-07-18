@@ -1,11 +1,32 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
 import { portfolioData } from '../data/portfolioData';
+import { getContactSettings } from '../services/portfolioService';
 
 const Contact = () => {
-  const { profile } = portfolioData;
+  const [profile, setProfile] = useState(portfolioData.profile);
+
+  useEffect(() => {
+    const loadDynamicData = async () => {
+      try {
+        const contactSettings = await getContactSettings();
+        if (contactSettings) {
+          setProfile((prev) => ({
+            ...prev,
+            email: contactSettings.email || prev.email,
+            phone: contactSettings.phone || prev.phone,
+            address: contactSettings.address || prev.address,
+          }));
+        }
+      } catch (error) {
+        console.warn("Failed to load contact info dynamically", error);
+      }
+    };
+    loadDynamicData();
+  }, []);
+
 
   const [formData, setFormData] = useState({
     name: '',
@@ -62,11 +83,11 @@ const Contact = () => {
 
       <main className="flex-grow w-full">
 
-        {/* PAGE SECTION 1 — HERO */}
-        <section className="bg-edi-cream pt-32 pb-16 px-6 md:px-12 max-w-7xl mx-auto w-full relative z-10 border-b border-edi-border/60">
+        {/* 2. LARGE CONTACT HEADING HERO */}
+        <section className="bg-edi-cream pt-32 pb-16 px-6 md:px-12 max-w-7xl mx-auto w-full relative z-10 border-b border-[#DDD7CE]/60">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
             
-            {/* Left Column (7 cols) */}
+            {/* Left Column */}
             <div className="lg:col-span-7 flex flex-col gap-4 text-left">
               <div className="mb-2 text-section-label text-edi-muted">
                 <Link to="/" className="hover:text-edi-black transition-colors">Home</Link> / <span className="text-edi-black font-semibold">Contact</span>
@@ -75,22 +96,22 @@ const Contact = () => {
                 JSR ANNAMAYYA
               </span>
               <h1 className="font-serif font-light text-edi-heading text-inner-headline">
-                Contact
+                CONTACT
               </h1>
               <p className="text-editorial-body text-edi-body leading-relaxed max-w-xl font-medium mt-2">
                 Available for public systems advice, municipal consultations, SWM capacity workshops, and speaking invitations.
               </p>
             </div>
 
-            {/* Right Column (5 cols) */}
+            {/* Right Column (Single Professional Photo) */}
             <div className="lg:col-span-5 relative select-none">
-              <div className="aspect-[16/10] w-full overflow-hidden border border-edi-border bg-edi-cream relative z-10 rounded-sm shadow-sm">
+              <div className="aspect-[16/10] w-full overflow-hidden border border-[#DDD7CE] bg-edi-cream relative z-10 rounded-sm shadow-sm">
                 <img
                   src={profile.images.contactHero}
                   alt={`${profile.name} Presentation`}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-edi-black/10 pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[#111111]/10 pointer-events-none"></div>
               </div>
             </div>
 
@@ -98,23 +119,23 @@ const Contact = () => {
         </section>
 
 
-        {/* PAGE SECTION 2 — CONTACT INFORMATION */}
-        <section className="py-24 md:py-32 bg-edi-white border-b border-edi-border/60 w-full text-left">
+        {/* 3. CONTACT INFORMATION */}
+        <section className="py-24 md:py-32 bg-edi-white border-b border-[#DDD7CE]/60 w-full text-left">
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
             
             {/* Left side */}
             <div className="lg:col-span-6 flex flex-col gap-4">
-              <span className="text-section-label text-edi-accent font-bold block">02 / COMMUNICATIONS</span>
+              <span className="text-section-label text-edi-accent font-bold block">02 / COORDINATES</span>
               <h2 className="font-serif text-section-headline text-edi-heading mb-4">
-                Direct Channels & Coordinates
+                Channels
               </h2>
             </div>
 
             {/* Right side */}
-            <div className="lg:col-span-6 flex flex-col border-t border-edi-border/60 w-full font-sans text-sm md:text-base">
+            <div className="lg:col-span-6 flex flex-col border-t border-[#DDD7CE]/60 w-full font-sans text-sm md:text-base">
               
               {/* Email Row */}
-              <div className="py-6 border-b border-edi-border/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div className="py-6 border-b border-[#DDD7CE]/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-edi-accent">Email Address</span>
                 <a href={`mailto:${profile.email}`} className="font-serif text-xl sm:text-2xl font-semibold text-edi-heading hover:text-edi-accent transition-colors">
                   {profile.email}
@@ -122,7 +143,7 @@ const Contact = () => {
               </div>
 
               {/* Phone Row */}
-              <div className="py-6 border-b border-edi-border/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div className="py-6 border-b border-[#DDD7CE]/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-edi-accent">Phone Contact</span>
                 <a href={`tel:+91${profile.phone}`} className="font-serif text-xl sm:text-2xl font-semibold text-edi-heading hover:text-edi-accent transition-colors">
                   +91 {profile.phone}
@@ -130,7 +151,7 @@ const Contact = () => {
               </div>
 
               {/* Location Row */}
-              <div className="py-6 border-b border-edi-border/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+              <div className="py-6 border-b border-[#DDD7CE]/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
                 <span className="text-[10px] font-bold uppercase tracking-wider text-edi-accent">Base Location</span>
                 <span className="font-serif text-xl sm:text-2xl font-semibold text-edi-heading">
                   {profile.address}
@@ -138,8 +159,8 @@ const Contact = () => {
               </div>
 
               {/* Social Channels Row */}
-              <div className="py-6 border-b border-edi-border/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
-                <span className="text-[10px] font-bold uppercase tracking-wider text-edi-accent">Social Link</span>
+              <div className="py-6 border-b border-[#DDD7CE]/60 flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+                <span className="text-[10px] font-bold uppercase tracking-wider text-edi-accent">Social Links</span>
                 <div className="flex items-center gap-6">
                   <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="font-semibold text-edi-heading hover:text-edi-accent underline">
                     LinkedIn
@@ -156,8 +177,8 @@ const Contact = () => {
         </section>
 
 
-        {/* PAGE SECTION 3 — FRONTEND FORM */}
-        <section className="py-24 md:py-32 bg-edi-cream border-b border-edi-border/60 w-full text-left">
+        {/* 4. MINIMAL FRONTEND FORM */}
+        <section className="py-24 md:py-32 bg-edi-cream w-full text-left">
           <div className="max-w-4xl mx-auto px-6 md:px-12 flex flex-col gap-12">
             <div className="flex flex-col gap-3">
               <span className="text-section-label text-edi-accent font-bold block">INQUIRY FORM</span>
@@ -178,7 +199,7 @@ const Contact = () => {
                     name="name"
                     value={formData.name}
                     onChange={handleInputChange}
-                    className="bg-transparent border-b border-edi-border/90 py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
+                    className="bg-transparent border-b border-[#DDD7CE] py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
                     placeholder="Enter your name"
                   />
                   {errors.name && <span className="text-[10px] text-red-600 font-medium">{errors.name}</span>}
@@ -193,7 +214,7 @@ const Contact = () => {
                     name="email"
                     value={formData.email}
                     onChange={handleInputChange}
-                    className="bg-transparent border-b border-edi-border/90 py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
+                    className="bg-transparent border-b border-[#DDD7CE] py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
                     placeholder="Enter your email address"
                   />
                   {errors.email && <span className="text-[10px] text-red-600 font-medium">{errors.email}</span>}
@@ -210,7 +231,7 @@ const Contact = () => {
                     name="phone"
                     value={formData.phone}
                     onChange={handleInputChange}
-                    className="bg-transparent border-b border-edi-border/90 py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
+                    className="bg-transparent border-b border-[#DDD7CE] py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
                     placeholder="Enter your phone number (optional)"
                   />
                 </div>
@@ -224,7 +245,7 @@ const Contact = () => {
                     name="subject"
                     value={formData.subject}
                     onChange={handleInputChange}
-                    className="bg-transparent border-b border-edi-border/90 py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
+                    className="bg-transparent border-b border-[#DDD7CE] py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors"
                     placeholder="Enter message subject"
                   />
                 </div>
@@ -239,7 +260,7 @@ const Contact = () => {
                   rows="4"
                   value={formData.message}
                   onChange={handleInputChange}
-                  className="bg-transparent border-b border-edi-border/90 py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors resize-none"
+                  className="bg-transparent border-b border-[#DDD7CE] py-3 text-sm text-edi-heading placeholder-edi-muted/50 focus:outline-none focus:border-edi-accent transition-colors resize-none"
                   placeholder="Enter details of your inquiry"
                 ></textarea>
                 {errors.message && <span className="text-[10px] text-red-600 font-medium">{errors.message}</span>}
@@ -253,38 +274,13 @@ const Contact = () => {
               <div className="mt-4">
                 <button
                   type="submit"
-                  className="px-8 py-4 bg-edi-black text-edi-cream border border-edi-black text-xs font-semibold uppercase tracking-[0.18em] rounded-none hover:bg-transparent hover:text-edi-black transition-all duration-300 focus:outline-none"
+                  className="px-8 py-4 bg-transparent text-edi-black border border-edi-black text-xs font-semibold uppercase tracking-[0.1em] rounded-[4px] hover:bg-edi-black hover:text-white transition-all duration-300 focus:outline-none"
                 >
                   Send Message
                 </button>
               </div>
 
             </form>
-          </div>
-        </section>
-
-
-        {/* PAGE SECTION 4 — FINAL IMAGE OR SOCIAL SECTION */}
-        <section className="py-0 bg-edi-white w-full relative select-none">
-          <div className="aspect-[21/9] w-full overflow-hidden relative">
-            <img
-              src={profile.images.heroPortrait}
-              alt="JSR Annamayya Campaign Activities"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-edi-black/35 flex items-center justify-center">
-              <div className="text-center flex flex-col gap-4 font-sans text-edi-cream max-w-md px-6">
-                <h3 className="font-serif text-3xl font-light text-white tracking-tight">Stay Connected</h3>
-                <p className="text-xs text-white/80 leading-relaxed font-medium">
-                  Follow JSR Annamayya on professional platforms to track upcoming climate workshops and municipal SWM campaigns.
-                </p>
-                <div className="flex justify-center items-center gap-6 mt-2">
-                  <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="px-6 py-2.5 bg-edi-cream text-edi-black border border-edi-cream text-xs font-semibold uppercase tracking-wider hover:bg-transparent hover:text-white hover:border-white transition-colors rounded-none">
-                    LinkedIn
-                  </a>
-                </div>
-              </div>
-            </div>
           </div>
         </section>
 

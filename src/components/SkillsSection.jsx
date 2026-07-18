@@ -1,81 +1,71 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const SkillRing = ({ label, targetPercentage, animate }) => {
-  const [percentage, setPercentage] = useState(0);
-  const radius = 38;
-  const strokeWidth = 5;
-  const circumference = 2 * Math.PI * radius;
-  const strokeDashoffset = circumference - (percentage / 100) * circumference;
+const ProgressBar = ({ label, targetPercentage, animate }) => {
+  const [width, setWidth] = useState(0);
 
   useEffect(() => {
     if (animate) {
-      // Smooth animation transition
-      let start = 0;
-      const duration = 1500; // 1.5 seconds
-      const startTime = performance.now();
-
-      const animateProgress = (currentTime) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        const easeOutQuad = progress * (2 - progress);
-        
-        setPercentage(Math.floor(easeOutQuad * targetPercentage));
-
-        if (progress < 1) {
-          requestAnimationFrame(animateProgress);
-        }
-      };
-
-      requestAnimationFrame(animateProgress);
+      // Set to target width after a slight delay to trigger CSS transition
+      const timer = setTimeout(() => {
+        setWidth(targetPercentage);
+      }, 100);
+      return () => clearTimeout(timer);
     } else {
-      setPercentage(0);
+      setWidth(0);
     }
   }, [animate, targetPercentage]);
 
   return (
-    <div className="flex flex-col items-center gap-4 text-center font-sans">
-      <div className="relative w-28 h-28 md:w-32 md:h-32">
-        <svg viewBox="0 0 100 100" className="w-full h-full transform -rotate-90">
-          {/* Background Track Stroke */}
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            stroke="#DDD7CE"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-          />
-          {/* Progress Ring Stroke */}
-          <circle
-            cx="50"
-            cy="50"
-            r={radius}
-            stroke="#A98760"
-            strokeWidth={strokeWidth}
-            fill="transparent"
-            strokeDasharray={circumference}
-            strokeDashoffset={strokeDashoffset}
-            strokeLinecap="round"
-            className="transition-all duration-300 ease-out"
-          />
-        </svg>
-        {/* Large Percentage in Center */}
-        <div className="absolute inset-0 flex items-center justify-center">
-          <span className="text-xl md:text-2xl font-serif font-bold text-edi-heading">
-            {percentage}%
-          </span>
+    <div className="flex flex-col gap-2.5 w-full font-sans select-none">
+      <div className="flex justify-between items-baseline text-xs md:text-sm font-semibold text-edi-heading">
+        <span className="uppercase tracking-wider">{label}</span>
+        <span>{width}%</span>
+      </div>
+      
+      {/* Horizontal Progress Track */}
+      <div className="relative w-full h-[4px] bg-[#DDD7CE] rounded-none overflow-hidden">
+        {/* Animated Progress Line */}
+        <div 
+          className="absolute top-0 left-0 h-full bg-[#111111] transition-all duration-[1200ms] ease-[cubic-bezier(0.22,1,0.36,1)] rounded-none"
+          style={{ width: `${width}%` }}
+        >
+          {/* Optional Gold Endpoint */}
+          <div className="absolute right-0 top-0 h-full w-[4px] bg-[#A98760]"></div>
         </div>
       </div>
-      <span className="text-[11px] md:text-xs font-bold uppercase tracking-wider text-edi-heading max-w-[150px] leading-tight">
-        {label}
-      </span>
     </div>
   );
 };
 
+import { getSkills } from '../services/portfolioService';
+
 const SkillsSection = () => {
   const [animate, setAnimate] = useState(false);
   const sectionRef = useRef(null);
+  const [skillsData, setSkillsData] = useState([
+    { label: "Behaviour Change Communication", target: 100 },
+    { label: "IEC Strategy", target: 100 },
+    { label: "Community Mobilisation", target: 100 },
+    { label: "Program Leadership", target: 100 }
+  ]);
+
+  useEffect(() => {
+    const loadDynamicData = async () => {
+      try {
+        const dbSkills = await getSkills();
+        if (dbSkills && dbSkills.length > 0) {
+          setSkillsData(dbSkills.map(s => ({
+            label: s.label,
+            target: s.targetPercentage !== undefined ? s.targetPercentage : (s.target || 100)
+          })));
+        }
+      } catch (error) {
+        console.warn("Failed to load skills dynamically", error);
+      }
+    };
+    loadDynamicData();
+  }, []);
+
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -99,46 +89,39 @@ const SkillsSection = () => {
     };
   }, []);
 
-  const skillsData = [
-    { label: "Behaviour Change Communication", target: 95 },
-    { label: "IEC Strategy", target: 90 },
-    { label: "Community Mobilisation", target: 92 },
-    { label: "Program Leadership", target: 88 }
-  ];
+
 
   return (
     <section
       id="skills"
       ref={sectionRef}
-      className="py-24 md:py-32 bg-edi-cream border-b border-edi-border/60 w-full"
+      className="py-24 md:py-32 bg-[#F8F6F1] border-b border-[#DDD7CE] w-full"
     >
-      <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+      <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
         
-        {/* Left Side: Section Title and Description */}
-        <div className="lg:col-span-4 flex flex-col gap-4">
-          <span className="text-[11px] font-sans font-bold tracking-[0.2em] text-edi-accent uppercase block">
+        {/* Left Column: Heading and Explanation (40% / 5 cols) */}
+        <div className="lg:col-span-5 flex flex-col gap-4 text-left">
+          <span className="text-section-label text-[#A98760] font-bold block">
             05 / EXPERTISE
           </span>
-          <h2 className="font-serif text-4xl sm:text-5xl font-light text-edi-heading leading-tight tracking-tight">
-            Skills & Competencies
+          <h2 className="font-serif text-section-headline text-[#181818] font-light leading-tight tracking-tight">
+            Skills
           </h2>
-          <p className="text-sm text-edi-body leading-relaxed font-sans max-w-xs mt-2">
-            A visual overview of core professional proficiencies applied across state-level campaigns, solid waste campaigns, and institutional environmental projects.
+          <p className="text-editorial-body text-[#5F5F5F] font-sans font-medium mt-2 max-w-sm">
+            Proven competencies applied across public systems, waste campaigns, and institutional climate education programs in Andhra Pradesh and Telangana.
           </p>
         </div>
 
-        {/* Right Side: Four ring charts */}
-        <div className="lg:col-span-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 justify-items-center">
-            {skillsData.map((skill, idx) => (
-              <SkillRing
-                key={idx}
-                label={skill.label}
-                targetPercentage={skill.target}
-                animate={animate}
-              />
-            ))}
-          </div>
+        {/* Right Column: Graphs (60% / 7 cols) */}
+        <div className="lg:col-span-7 w-full flex flex-col gap-8 md:gap-9 py-2">
+          {skillsData.map((skill, idx) => (
+            <ProgressBar
+              key={idx}
+              label={skill.label}
+              targetPercentage={skill.target}
+              animate={animate}
+            />
+          ))}
         </div>
 
       </div>

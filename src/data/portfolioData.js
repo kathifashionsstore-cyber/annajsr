@@ -399,5 +399,23 @@ export const portfolioData = {
     'Tirumala Tirupati Devasthanams (TTD)'
   ],
 
+  development: [
+    {
+      id: "dev-1",
+      year: "2024",
+      program: "India Circular Economy Forum",
+      institution: "New Delhi",
+      description: "Presented municipal solid waste management (SWM) implementation outcomes and behavior-change methodologies to environmental policymakers."
+    },
+    {
+      id: "dev-2",
+      year: "ONGOING",
+      program: "Collegiate Keynotes",
+      institution: "Academia",
+      description: "Delivered guest lectures and design thinking keynotes on sustainability and solid waste management at IIT Indore, BITS Pilani (Hyderabad Campus), and Osmania University."
+    }
+  ],
+
   gallery: galleryData
 };
+

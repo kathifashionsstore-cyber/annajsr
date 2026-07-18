@@ -1,15 +1,79 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import RotatingResumeBadge from '../components/RotatingResumeBadge';
+import TestimonialsSection from '../components/TestimonialsSection';
 import { portfolioData } from '../data/portfolioData';
+import { getHeroContent, getAboutContent, getDevelopment } from '../services/portfolioService';
 
 const ProfessionalProfile = () => {
-  const { profile, education, strengths, caseStudies } = portfolioData;
+  const [profile, setProfile] = useState(portfolioData.profile);
+  const { education, caseStudies } = portfolioData;
+  const [development, setDevelopment] = useState(portfolioData.development);
+  const [aboutData, setAboutData] = useState({
+    philosophyStatement: "Sustainable public systems are not built merely by policy, but by changing grassroots human habits at scale.",
+    philosophyParagraph1: "JSR Annamayya believes that behavioral alignment is the most cost-effective municipal infrastructure. Rather than relying solely on policing or enforcement, municipal campaigns succeed when they remove friction at the exact point of the habit.",
+    philosophyParagraph2: "By creating Solar Bag Vending networks (Any Time Bag) and citizen communication models in Rajamahendravaram and Nellore, he has built the structural templates that turn compliance targets into organic public movements.",
+    philosophyImageUrl: "",
+    futureOutlookParagraph1: "Expanding youth-led sustainable networks across Telangana and Andhra Pradesh, with a target of training 100,000 community stewards by 2027.",
+    futureOutlookParagraph2: "Deploying smart doorstep waste-segregation tracking tools in municipal wards to digitize worker routes, optimize fuel usage, and provide real-time collection metrics for municipal administrators."
+  });
 
-  // Let's add short descriptions for each strength to render them as detailed rows
-  const strengthsDetails = [
+  useEffect(() => {
+    const loadDynamicData = async () => {
+      try {
+        const heroData = await getHeroContent();
+        const dbAbout = await getAboutContent();
+        const devList = await getDevelopment();
+
+        setProfile((prev) => ({
+          ...prev,
+          designation: heroData.title || prev.designation,
+          images: {
+            ...prev.images,
+            heroPortrait: heroData.imageUrl || prev.images.heroPortrait,
+            profileAlt: dbAbout.imageUrl || prev.images.profileAlt,
+          },
+          bio: {
+            ...prev.bio,
+            intro: dbAbout.intro || prev.bio.intro,
+            bio1: heroData.introText || prev.bio.bio1,
+            bio2: dbAbout.eduBio || prev.bio.bio2,
+            bio3: dbAbout.corporateBio || prev.bio.bio3,
+          },
+          strengths: dbAbout.strengths || prev.strengths,
+        }));
+
+        if (dbAbout) {
+          setAboutData({
+            philosophyStatement: dbAbout.philosophyStatement || "Sustainable public systems are not built merely by policy, but by changing grassroots human habits at scale.",
+            philosophyParagraph1: dbAbout.philosophyParagraph1 || "JSR Annamayya believes that behavioral alignment is the most cost-effective municipal infrastructure. Rather than relying solely on policing or enforcement, municipal campaigns succeed when they remove friction at the exact point of the habit.",
+            philosophyParagraph2: dbAbout.philosophyParagraph2 || "By creating Solar Bag Vending networks (Any Time Bag) and citizen communication models in Rajamahendravaram and Nellore, he has built the structural templates that turn compliance targets into organic public movements.",
+            philosophyImageUrl: dbAbout.philosophyImageUrl || "",
+            futureOutlookParagraph1: dbAbout.futureOutlookParagraph1 || "Expanding youth-led sustainable networks across Telangana and Andhra Pradesh, with a target of training 100,000 community stewards by 2027.",
+            futureOutlookParagraph2: dbAbout.futureOutlookParagraph2 || "Deploying smart doorstep waste-segregation tracking tools in municipal wards to digitize worker routes, optimize fuel usage, and provide real-time collection metrics for municipal administrators."
+          });
+        }
+
+        if (devList && devList.length > 0) {
+          setDevelopment(devList.map(d => ({
+            id: d.id,
+            year: d.year,
+            program: d.program,
+            institution: d.institution,
+            description: d.description
+          })).sort((a, b) => b.order - a.order));
+        }
+      } catch (error) {
+        console.warn("Failed to load profile page dynamic data", error);
+      }
+    };
+    loadDynamicData();
+  }, []);
+
+
+  // 10 Key Strengths
+  const strengths = [
     { title: "Government Expertise", desc: "Collaborating with municipal commissioners, environmental engineers, and state-level ministries across Andhra Pradesh and Telangana." },
     { title: "IEC & BCC Strategy", desc: "Formulating Information, Education, and Communication frameworks to drive sustainable citizen segregation habits." },
     { title: "Solid Waste Management (SWM)", desc: "Advising municipal corporations on collection efficiency, street compliance, and national rating evaluation." },
@@ -28,35 +92,40 @@ const ProfessionalProfile = () => {
 
       <main className="flex-grow w-full">
 
-        {/* PAGE SECTION 1 — INNER HERO */}
-        <section className="bg-edi-cream pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto w-full relative z-10 border-b border-edi-border/60">
+        {/* 2. INNER-PAGE HERO */}
+        <section className="bg-edi-cream pt-32 pb-20 px-6 md:px-12 max-w-7xl mx-auto w-full relative z-10 border-b border-[#DDD7CE]/60">
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 items-center w-full">
             
-            {/* Left Title block (60% width) */}
+            {/* Left Content (55% width / 7 cols) */}
             <div className="lg:col-span-7 flex flex-col gap-4 text-left">
               {/* Breadcrumb */}
               <div className="mb-2 text-section-label text-edi-muted">
                 <Link to="/" className="hover:text-edi-black transition-colors">Home</Link> / <span className="text-edi-black font-semibold">Professional Profile</span>
               </div>
               <span className="text-section-label text-edi-accent font-bold block">
-                {profile.name}
+                JSR ANNAMAYYA
               </span>
               <h1 className="font-serif font-light text-edi-heading text-inner-headline">
-                Professional Profile
+                PROFESSIONAL PROFILE
               </h1>
             </div>
 
-            {/* Right Image (40% width) */}
+            {/* Right Image (45% width / 5 cols) */}
             <div className="lg:col-span-5 relative select-none">
-              <div className="absolute top-4 -left-4 w-full h-full bg-edi-beige/40 rounded-sm z-0"></div>
-              <div className="absolute -bottom-6 -right-6 w-36 h-36 rounded-full border border-edi-accent/30 pointer-events-none z-0"></div>
-              <div className="aspect-[16/10] w-full overflow-hidden border border-edi-border bg-edi-cream relative z-10 rounded-sm shadow-sm">
+              {/* Beige Shape */}
+              <div className="absolute top-4 -left-4 w-full h-full bg-[#D8CBBB]/40 rounded-sm z-0"></div>
+              {/* Thin Outlined Circle */}
+              <div className="absolute -bottom-6 -right-6 w-36 h-36 rounded-full border border-[#A98760]/30 pointer-events-none z-0"></div>
+              {/* Small Decorative Line */}
+              <div className="absolute top-1/4 -right-8 w-12 h-[1px] bg-[#DDD7CE] pointer-events-none z-0"></div>
+              
+              <div className="aspect-[16/10] w-full overflow-hidden border border-[#DDD7CE] bg-edi-cream relative z-10 rounded-sm shadow-sm">
                 <img
                   src={profile.images.aboutStack}
                   alt={`${profile.name} Presentation`}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-edi-black/10 pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[#111111]/10 pointer-events-none"></div>
               </div>
             </div>
 
@@ -64,29 +133,29 @@ const ProfessionalProfile = () => {
         </section>
 
 
-        {/* PAGE SECTION 2 — PROFILE IMAGE WITH FULL BIOGRAPHY */}
-        <section className="py-24 md:py-32 bg-edi-white border-b border-edi-border/60 w-full">
+        {/* 3. PROFESSIONAL BIOGRAPHY */}
+        <section className="py-24 md:py-32 bg-edi-white border-b border-[#DDD7CE]/60 w-full">
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
             
-            {/* Left large portrait (40% width) */}
+            {/* Left Portrait */}
             <div className="lg:col-span-5 relative select-none">
-              <div className="aspect-[4/5] w-full overflow-hidden border border-edi-border bg-edi-cream relative z-10 rounded-sm shadow-md">
+              <div className="aspect-[4/5] w-full overflow-hidden border border-[#DDD7CE] bg-edi-cream relative z-10 rounded-sm shadow-md">
                 <img
                   src={profile.images.profileAlt}
                   alt={profile.name}
                   className="w-full h-full object-cover"
                 />
-                <div className="absolute inset-0 bg-edi-black/10 pointer-events-none"></div>
+                <div className="absolute inset-0 bg-[#111111]/10 pointer-events-none"></div>
               </div>
             </div>
 
-            {/* Right full bio (60% width) */}
+            {/* Right profile details */}
             <div className="lg:col-span-7 flex flex-col gap-6 text-left font-sans">
               <h2 className="font-serif text-section-headline text-edi-heading">
                 {profile.name}
               </h2>
               <span className="text-section-label text-edi-accent font-bold block">
-                {profile.role}
+                PROFESSIONAL PROFILE
               </span>
               
               <div className="flex flex-col gap-6 text-edi-body font-sans font-medium mt-4">
@@ -98,24 +167,20 @@ const ProfessionalProfile = () => {
                 <p className="text-editorial-body">{profile.bio.bio3}</p>
               </div>
 
-              {/* Two key strengths snippet */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 border-t border-edi-border/60 pt-6 mt-4">
-                <div>
-                  <h4 className="text-section-label text-edi-heading font-bold mb-2">01 / PUBLIC SECTOR ADVOCACY</h4>
-                  <p className="text-xs text-edi-body font-medium leading-relaxed">
-                    Developing large-scale Information, Education and Communication (IEC) strategies across state-level departments and municipal authorities.
-                  </p>
-                </div>
-                <div>
-                  <h4 className="text-section-label text-edi-heading font-bold mb-2">02 / CAMPAIGN LOGISTICS</h4>
-                  <p className="text-xs text-edi-body font-medium leading-relaxed">
-                    Executing waste segregation models, citizen mobilization, SWM surveys, and capacity training for health workers.
-                  </p>
+              {/* Strengths */}
+              <div className="border-t border-[#DDD7CE]/60 pt-6 mt-4 w-full">
+                <h4 className="text-section-label text-edi-heading font-bold mb-4">Core Strengths</h4>
+                <div className="flex flex-wrap gap-2.5">
+                  {profile.strengths.map((str, idx) => (
+                    <span key={idx} className="px-3.5 py-1.5 bg-[#F8F6F1] border border-[#DDD7CE] text-[#806346] font-bold text-[10px] uppercase tracking-wider">
+                      {str}
+                    </span>
+                  ))}
                 </div>
               </div>
 
-              {/* Social Link Indicators */}
-              <div className="flex items-center gap-6 mt-6 border-t border-edi-border/60 pt-6 w-full">
+              {/* Social Links */}
+              <div className="flex items-center gap-6 mt-6 border-t border-[#DDD7CE]/60 pt-6 w-full">
                 <a href={profile.linkedinUrl} target="_blank" rel="noopener noreferrer" className="text-xs uppercase tracking-wider font-extrabold text-edi-accent hover:text-edi-accent-dark underline">
                   LinkedIn Profile
                 </a>
@@ -129,216 +194,100 @@ const ProfessionalProfile = () => {
         </section>
 
 
-        {/* PAGE SECTION 3 — CORE STRENGTHS */}
-        <section className="py-24 md:py-32 bg-edi-cream border-b border-edi-border/60 w-full">
+        {/* 4. PERSONAL PHILOSOPHY */}
+        <section className="py-24 md:py-32 bg-edi-cream border-b border-[#DDD7CE]/60 w-full">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
+            
+            {/* Left Column */}
+            <div className="lg:col-span-7 flex flex-col gap-6 text-left">
+              <span className="text-section-label text-edi-accent font-bold block">
+                PERSONAL PHILOSOPHY
+              </span>
+              <h2 className="font-serif text-section-headline text-edi-heading">
+                Operational Philosophy
+              </h2>
+              <p className="font-serif text-2xl sm:text-3xl italic text-[#806346] leading-relaxed font-light mt-2">
+                {aboutData.philosophyStatement}
+              </p>
+              <div className="flex flex-col gap-4 text-editorial-body text-edi-body font-sans font-medium mt-4">
+                <p>{aboutData.philosophyParagraph1}</p>
+                {aboutData.philosophyParagraph2 && <p>{aboutData.philosophyParagraph2}</p>}
+              </div>
+            </div>
+
+            {/* Right Column Image */}
+            <div className="lg:col-span-5 select-none relative">
+              <div className="aspect-[4/3] w-full overflow-hidden border border-[#DDD7CE] bg-[#F8F6F1] relative rounded-none shadow-sm">
+                <img
+                  src={aboutData.philosophyImageUrl || profile.images.heroPortrait}
+                  alt={`${profile.name} Philosophy portrait`}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute inset-0 bg-[#111111]/15 pointer-events-none"></div>
+              </div>
+            </div>
+
+          </div>
+        </section>
+
+
+        {/* 5. ONGOING DEVELOPMENT */}
+        <section className="py-24 md:py-32 bg-edi-white border-b border-[#DDD7CE]/60 w-full text-left">
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
             
             <div className="lg:col-span-4 flex flex-col gap-4">
-              <span className="text-section-label text-edi-accent font-bold block">
-                02 / CORE CAPABILITIES
-              </span>
-              <h2 className="font-serif text-section-headline text-edi-heading">
-                Core Strengths
-              </h2>
-            </div>
-
-            <div className="lg:col-span-8 flex flex-col border-t border-edi-border/60 w-full font-sans">
-              {strengthsDetails.map((item, idx) => (
-                <div 
-                  key={idx}
-                  className="py-6 border-b border-edi-border/60 grid grid-cols-1 sm:grid-cols-12 gap-4 items-baseline"
-                >
-                  <div className="sm:col-span-2 text-lg font-serif italic text-edi-accent font-bold">
-                    {String(idx + 1).padStart(2, '0')}
-                  </div>
-                  <div className="sm:col-span-10 flex flex-col gap-1 text-left">
-                    <h3 className="font-serif text-card-headline text-edi-heading">
-                      {item.title}
-                    </h3>
-                    <p className="text-xs sm:text-sm text-edi-body leading-relaxed mt-1 font-medium">{item.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </section>
-
-
-        {/* PAGE SECTION 4 — PERSONAL PHILOSOPHY */}
-        <section className="py-24 md:py-32 bg-edi-black text-edi-cream border-b border-edi-border/10 w-full">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
-            
-            {/* Left text */}
-            <div className="lg:col-span-7 flex flex-col gap-6 text-left">
-              <span className="text-section-label text-edi-accent font-bold block">
-                MISSION STATEMENT
-              </span>
-              <p className="font-serif text-section-headline italic leading-relaxed text-white font-light">
-                "Sustainable public systems are not built merely by policy, but by changing grassroots human habits at scale."
-              </p>
-              <div className="flex flex-col gap-4 text-xs sm:text-sm text-edi-cream/65 leading-relaxed font-sans font-medium mt-4 max-w-xl">
-                <p className="text-editorial-body">
-                  JSR Annamayya's career focus has been to design communication bridges between government municipal administration layers and the community citizen bodies, ensuring that waste segregation compliance shifts from arbitrary targets to institutionalized routines.
-                </p>
-                <p className="text-editorial-body">
-                  By integrating solar bag vending systems, chatbot logs, and student education program metrics, he has proven that public environmental sustainability is a designable outcome.
-                </p>
-              </div>
-            </div>
-
-            {/* Right image */}
-            <div className="lg:col-span-5 select-none relative">
-              <div className="aspect-[4/3] w-full overflow-hidden border border-edi-border/20 bg-edi-cream relative rounded-none shadow-sm">
-                <img
-                  src={profile.images.heroPortrait}
-                  alt={`${profile.name} Philosophy Portrait`}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-edi-black/20 pointer-events-none"></div>
-              </div>
-            </div>
-
-          </div>
-        </section>
-
-
-        {/* PAGE SECTION 5 — EDUCATION */}
-        <section className="py-24 md:py-32 bg-edi-white border-b border-edi-border/60 w-full">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
-            
-            <div className="lg:col-span-4">
-              <span className="text-section-label text-edi-accent font-bold block">
-                03 / CREDENTIALS
-              </span>
-              <h2 className="font-serif text-section-headline text-edi-heading">
-                Education
-              </h2>
-            </div>
-
-            <div className="lg:col-span-8 flex flex-col border-l border-edi-border/60 ml-2 pl-6 sm:pl-8 py-2 gap-8 font-sans text-left">
-              {education.map((edu, idx) => (
-                <div key={idx} className="relative">
-                  
-                  {/* Timeline bullet dot */}
-                  <div className="absolute -left-[31px] sm:-left-[39px] top-1.5 w-3.5 h-3.5 bg-edi-white border border-edi-accent rounded-full"></div>
-
-                  <div className="flex flex-col gap-2">
-                    <span className="text-[10px] font-mono tracking-widest text-edi-accent font-bold uppercase">{edu.dateRange}</span>
-                    <h3 className="font-serif text-card-headline text-edi-heading leading-tight">
-                      {edu.degree}
-                    </h3>
-                    <h4 className="text-xs uppercase tracking-wider text-edi-accent-dark font-extrabold">
-                      {edu.institution}
-                    </h4>
-                    <p className="text-xs text-edi-muted uppercase tracking-wider font-semibold">
-                      {edu.location}
-                    </p>
-                    <p className="text-editorial-body text-edi-body leading-relaxed mt-2 max-w-2xl font-medium">
-                      {edu.details}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-          </div>
-        </section>
-
-
-        {/* PAGE SECTION 6 — ONGOING DEVELOPMENT */}
-        <section className="py-24 md:py-32 bg-edi-cream border-b border-edi-border/60 w-full">
-          <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-start">
-            
-            <div className="lg:col-span-4">
               <span className="text-section-label text-edi-accent font-bold block">
                 04 / DEVELOPMENT
               </span>
               <h2 className="font-serif text-section-headline text-edi-heading">
                 Ongoing Development
               </h2>
-              <p className="text-editorial-body text-edi-body leading-relaxed font-sans mt-4 max-w-xs font-medium">
-                National presentation panels, capacity-building workshops, and public sector advisory forums.
+              <p className="text-editorial-body text-edi-body font-sans mt-2 max-w-xs font-medium">
+                National panels, capacity-building workshops, and academic keynote presentations.
               </p>
             </div>
 
-            <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 gap-8 font-sans text-left">
-              <div className="bg-edi-white p-6 border border-edi-border flex flex-col gap-3">
-                <span className="text-[9px] text-edi-accent font-mono font-bold tracking-widest uppercase block">CONFERENCE PRESENTATION</span>
-                <h4 className="font-serif text-xl font-bold text-edi-heading">India Circular Economy Forum</h4>
-                <p className="text-xs text-edi-body leading-relaxed font-medium">
-                  Shared critical municipal solid waste management (SWM) implementation outcomes at the circular economy summit in New Delhi (2024).
-                </p>
-              </div>
-              <div className="bg-edi-white p-6 border border-edi-border flex flex-col gap-3">
-                <span className="text-[9px] text-edi-accent font-mono font-bold tracking-widest uppercase block">INVITED LECTURES</span>
-                <h4 className="font-serif text-xl font-bold text-edi-heading">Collegiate Outreach Keynotes</h4>
-                <p className="text-xs text-edi-body leading-relaxed font-medium">
-                  Delivered guest technical presentations on design thinking and environmental SWM frameworks at BITS Pilani, IIT Indore, and Osmania University.
-                </p>
-              </div>
+            <div className="lg:col-span-8 flex flex-col gap-6 font-sans">
+              {development.map((item, idx) => (
+                <div key={item.id || idx} className="py-6 border-b border-[#DDD7CE]/60 flex flex-col gap-2">
+                  <span className="text-[10px] font-mono tracking-widest text-edi-accent font-bold uppercase">{item.year} &mdash; {item.institution}</span>
+                  <h4 className="font-serif text-card-headline text-edi-heading">{item.program}</h4>
+                  <p className="text-xs sm:text-sm text-edi-body font-medium leading-relaxed mt-1">
+                    {item.description}
+                  </p>
+                </div>
+              ))}
             </div>
 
           </div>
         </section>
 
 
-        {/* PAGE SECTION 7 — FUTURE OUTLOOK */}
-        <section className="py-0 bg-edi-white w-full border-b border-edi-border/60 relative select-none">
-          <div className="aspect-[21/9] w-full overflow-hidden relative">
-            <img
-              src={caseStudies[1].image}
-              alt="Community Environmental Campaign"
-              className="w-full h-full object-cover"
-            />
-            <div className="absolute inset-0 bg-edi-black/25"></div>
-          </div>
-          
-          {/* Overlapping Content Box */}
-          <div className="max-w-7xl mx-auto px-6 md:px-12 relative z-10 -mt-24 pb-24 text-left">
-            <div className="bg-edi-cream border border-edi-border p-8 md:p-12 rounded-none max-w-2xl shadow-lg font-sans">
-              <span className="text-[10px] font-mono tracking-widest text-edi-accent font-bold uppercase block mb-3">05 / FUTURE OUTLOOK</span>
-              <h3 className="font-serif text-card-headline text-edi-heading mb-4">Focus Areas & Objectives</h3>
-              <p className="text-xs sm:text-sm text-edi-body leading-relaxed font-medium mb-6">
-                Directing youth-led sustainable networks, expanding solar bag vending deployments to reduce plastic load, and integrating data systems to coordinate sanitation worker compliance records.
-              </p>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 border-t border-edi-border/60 pt-6">
-                <div>
-                  <h5 className="text-[9px] font-extrabold text-edi-accent uppercase tracking-wider mb-1">01 / YOUTH ADVOCACY</h5>
-                  <p className="text-[10px] text-edi-muted leading-relaxed font-medium">Empowering state student networks as climate champions.</p>
-                </div>
-                <div>
-                  <h5 className="text-[9px] font-extrabold text-edi-accent uppercase tracking-wider mb-1">02 / WASTE TRACKING</h5>
-                  <p className="text-[10px] text-edi-muted leading-relaxed font-medium">Standardizing municipal doorstep collection metrics.</p>
-                </div>
-                <div>
-                  <h5 className="text-[9px] font-extrabold text-edi-accent uppercase tracking-wider mb-1">03 / POLICY DESIGNS</h5>
-                  <p className="text-[10px] text-edi-muted leading-relaxed font-medium">Publishing eco product advocacy guidelines.</p>
-                </div>
-              </div>
-            </div>
-          </div>
-        </section>
-
-
-        {/* PAGE SECTION 8 — CV CTA */}
-        <section className="py-24 bg-edi-black text-edi-cream text-center w-full">
-          <div className="max-w-3xl mx-auto flex flex-col md:flex-row items-center justify-between gap-12 px-6">
-            <div className="text-left max-w-md">
-              <span className="text-section-label text-edi-accent font-bold block mb-2">DOWNLOAD DETAILS</span>
-              <h3 className="font-serif text-section-headline font-light text-white tracking-tight mb-4">
-                Curriculum Vitae
-              </h3>
-              <p className="text-xs sm:text-sm text-edi-cream/65 leading-relaxed font-sans font-medium">
-                Get the complete professional details of JSR Annamayya covering all public awards, guest presentations, and municipal governance details.
-              </p>
-            </div>
+        {/* 6. FUTURE OUTLOOK */}
+        <section className="py-24 md:py-32 bg-[#F8F6F1] border-b border-[#DDD7CE]/60 w-full text-left">
+          <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 items-center">
             
-            <div className="relative flex justify-center items-center shrink-0">
-              <RotatingResumeBadge />
+            {/* Left large heading */}
+            <div className="lg:col-span-5 flex flex-col gap-3">
+              <span className="text-section-label text-edi-accent font-bold block">05 / OUTLOOK</span>
+              <h2 className="font-serif text-section-headline text-edi-heading font-light leading-tight">
+                Future Outlook
+              </h2>
             </div>
+
+            {/* Right text paragraphs */}
+            <div className="lg:col-span-7 flex flex-col gap-6 text-editorial-body text-edi-body font-sans font-medium">
+              <p>{aboutData.futureOutlookParagraph1}</p>
+              {aboutData.futureOutlookParagraph2 && <p>{aboutData.futureOutlookParagraph2}</p>}
+            </div>
+
+
           </div>
         </section>
+
+
+        {/* 7. TESTIMONIALS & RECOGNITION (Reusable Component) */}
+        <TestimonialsSection />
 
       </main>
 
