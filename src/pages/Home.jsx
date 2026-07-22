@@ -202,7 +202,7 @@ const Home = () => {
             <div className="lg:col-span-5 relative group select-none">
               <div className="aspect-[4/5] w-full overflow-hidden border border-[#DDD7CE] bg-[#F8F6F1] relative z-10 clip-reveal-left shadow-sm">
                 <img
-                  src={profile.images.profileAlt}
+                  src="/1.webp"
                   alt={`${profile.name} In Action`}
                   className="w-full h-full object-cover"
                   loading="lazy"

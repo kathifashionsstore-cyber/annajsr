@@ -63,7 +63,7 @@ export const portfolioData = {
     
     images: {
       heroPortrait: heroProfileImg,
-      profileAlt: profileAltImg,
+      profileAlt: '/1.webp',
       aboutStack: aboutStackImg,
       experienceHero: experienceHeroImg,
       contactHero: contactHeroImg,
