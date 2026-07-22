@@ -168,7 +168,6 @@ const Admin = () => {
   const [messages, setMessages] = useState([]);
   const [testimonials, setTestimonials] = useState([]);
   const [pressCoverage, setPressCoverage] = useState([]);
-  const [resumeUrl, setResumeUrl] = useState('');
   const [analyticsSummary, setAnalyticsSummary] = useState([]);
   const [recentActivities, setRecentActivities] = useState([]);
   const [systemLogsList, setSystemLogsList] = useState([]);
@@ -337,30 +336,6 @@ const Admin = () => {
     }
   };
 
-  const handleResumeUpload = async (e) => {
-    e.preventDefault();
-    setLoading(true);
-    try {
-      const file = e.target.resumeFile.files[0];
-      if (!file) {
-        showAdminToast('Please select a PDF file first.', true);
-        return;
-      }
-      
-      const storageRef = ref(storage, `resumes/jsr_resume_${Date.now()}.pdf`);
-      await uploadBytes(storageRef, file);
-      const fileUrl = await getDownloadURL(storageRef);
-      
-      await saveResumeUrl(fileUrl);
-      showAdminToast('Resume PDF uploaded and saved successfully!');
-      loadAllData();
-    } catch (err) {
-      console.error(err);
-      showAdminToast('Error uploading resume PDF.', true);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   // Firebase Auth Email and Password submission
   const handleAuthSubmit = async (e) => {
@@ -434,7 +409,10 @@ const Admin = () => {
         philosophyParagraph2: data.philosophyParagraph2 || '',
         philosophyImageUrl: aboutData.philosophyImageUrl || '',
         futureOutlookParagraph1: data.futureOutlookParagraph1 || '',
-        futureOutlookParagraph2: data.futureOutlookParagraph2 || ''
+        futureOutlookParagraph2: data.futureOutlookParagraph2 || '',
+        story1Image: aboutData.story1Image || '',
+        story2Image: aboutData.story2Image || '',
+        story3Image: aboutData.story3Image || ''
       };
 
       await updateAboutContent(payload);
@@ -454,6 +432,31 @@ const Admin = () => {
     const url = await handleImageUpload(e, 'about');
     if (url) {
       setAboutData(prev => ({ ...prev, philosophyImageUrl: url }));
+    }
+  };
+
+  // Professional Profile Story Image Changes
+  const handleStory1ImageChange = async (e) => {
+    handleLocalPreview(e);
+    const url = await handleImageUpload(e, 'about');
+    if (url) {
+      setAboutData(prev => ({ ...prev, story1Image: url }));
+    }
+  };
+
+  const handleStory2ImageChange = async (e) => {
+    handleLocalPreview(e);
+    const url = await handleImageUpload(e, 'about');
+    if (url) {
+      setAboutData(prev => ({ ...prev, story2Image: url }));
+    }
+  };
+
+  const handleStory3ImageChange = async (e) => {
+    handleLocalPreview(e);
+    const url = await handleImageUpload(e, 'about');
+    if (url) {
+      setAboutData(prev => ({ ...prev, story3Image: url }));
     }
   };
 
@@ -1592,6 +1595,57 @@ const Admin = () => {
                 {aboutData.philosophyImageUrl && (
                   <div className="w-24 h-24 rounded-lg overflow-hidden border border-gray-200 mt-2">
                     <img src={aboutData.philosophyImageUrl} alt="Philosophy Portrait Preview" className="w-full h-full object-cover" />
+                  </div>
+                )}
+              </div>
+
+              {/* Professional Profile Story Images */}
+              <h3 className="text-sm font-bold uppercase tracking-wider text-neutraltext border-t pt-4 mt-2">Professional Profile Editorial Stories Images</h3>
+              
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext font-mono">Story 1 Image (Foundation & Education)</label>
+                <input 
+                  type="file" accept="image/*" onChange={handleStory1ImageChange}
+                  className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
+                />
+                {aboutData.story1Image && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={aboutData.story1Image} alt="Story 1 Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <button type="button" onClick={() => setAboutData(prev => ({ ...prev, story1Image: '' }))} className="text-xs text-red-600 font-bold hover:underline">Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext font-mono">Story 2 Image (Corporate Leadership)</label>
+                <input 
+                  type="file" accept="image/*" onChange={handleStory2ImageChange}
+                  className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
+                />
+                {aboutData.story2Image && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={aboutData.story2Image} alt="Story 2 Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <button type="button" onClick={() => setAboutData(prev => ({ ...prev, story2Image: '' }))} className="text-xs text-red-600 font-bold hover:underline">Remove</button>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-xs font-bold uppercase tracking-wider text-neutraltext font-mono">Story 3 Image (Public Impact & Innovation)</label>
+                <input 
+                  type="file" accept="image/*" onChange={handleStory3ImageChange}
+                  className="bg-offwhite/50 border border-gray-200 rounded-xl p-2 text-xs focus:outline-none"
+                />
+                {aboutData.story3Image && (
+                  <div className="flex items-center gap-3 mt-2">
+                    <div className="w-20 h-20 rounded-lg overflow-hidden border border-gray-200">
+                      <img src={aboutData.story3Image} alt="Story 3 Preview" className="w-full h-full object-cover" />
+                    </div>
+                    <button type="button" onClick={() => setAboutData(prev => ({ ...prev, story3Image: '' }))} className="text-xs text-red-600 font-bold hover:underline">Remove</button>
                   </div>
                 )}
               </div>

@@ -22,9 +22,6 @@ import { galleryData } from './galleryData';
 
 /**
  * Centered static data store for JSR Annamayya's portfolio.
- * 
- * TODO: Put the actual resume PDF named "JSR-Annamayya-CV-2026.pdf" 
- * in the public/ folder to enable the download function.
  */
 export const portfolioData = {
   profile: {
@@ -55,9 +52,6 @@ export const portfolioData = {
       "CSR & Institutional Partnerships",
       "Training & Public Speaking"
     ],
-    
-    // Centralized CV/Resume Constant
-    resumeUrl: "/JSR-Annamayya-CV-2026.pdf",
     
     // Contact Settings
     email: "Sai.annamayya@gmail.com",

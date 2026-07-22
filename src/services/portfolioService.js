@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, auth } from '../firebase';
 import { 
   doc, 
   getDoc, 
@@ -30,7 +30,10 @@ const FALLBACK_ABOUT = {
   serviceBio: portfolioData.profile.bio.bio1,
   corporateBio: portfolioData.profile.bio.bio3,
   strengths: portfolioData.profile.strengths,
-  imageUrl: portfolioData.profile.images.profileAlt
+  imageUrl: portfolioData.profile.images.profileAlt,
+  story1Image: portfolioData.profile.images.aboutStack,
+  story2Image: portfolioData.profile.images.profileAlt,
+  story3Image: portfolioData.profile.images.heroPortrait
 };
 
 const FALLBACK_TIMELINE = portfolioData.experience.map((exp, idx) => ({
@@ -200,7 +203,7 @@ export const deleteAward = async (id) => {
 // 7. Gallery
 export const getGalleryImages = () => {
   // Convert static imports into a direct array matching schema
-  const fallbackList = staticGallery.map(img => ({
+  const fallbackList = portfolioData.gallery.map(img => ({
     image: img.image,
     caption: img.caption
   }));
@@ -412,24 +415,6 @@ export const deletePressItem = async (id) => {
   await logSystemActivity('delete_press_item', `Deleted press item: ${id}`);
 };
 
-// --- RESUME ---
-export const getResumeUrl = async () => {
-  try {
-    const docRef = doc(db, 'content', 'resume');
-    const snap = await getDoc(docRef);
-    return snap.exists() ? snap.data().url : null;
-  } catch (e) {
-    console.warn("Firestore fetch failed for resume URL", e);
-    return null;
-  }
-};
-
-export const saveResumeUrl = async (url) => {
-  const docRef = doc(db, 'content', 'resume');
-  await setDoc(docRef, { url }, { merge: true });
-  await logSystemActivity('save_resume', `Uploaded new resume PDF`);
-};
-
 // --- ANALYTICS EVENTS & DAILY ROLLUPS ---
 export const logAnalyticsEvent = async (event) => {
   try {
@@ -451,10 +436,6 @@ export const logAnalyticsEvent = async (event) => {
       const label = event.label || 'unknown';
       const safeLabel = `gallery_${label.replace(/[^a-zA-Z0-9]/g, '_')}`;
       updates[safeLabel] = increment(1);
-    } else if (event.type === 'resume_download') {
-      updates.resumeDownloads = increment(1);
-    } else if (event.type === 'resume_preview') {
-      updates.resumePreviews = increment(1);
     } else if (event.type === 'contact_submit') {
       updates.contactSubmissions = increment(1);
     } else if (event.type === 'chatbot_message') {

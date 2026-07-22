@@ -1,19 +1,33 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
-import PortraitFrame from '../components/PortraitFrame';
-import RotatingResumeBadge from '../components/RotatingResumeBadge';
 import VisionSection from '../components/VisionSection';
 import SkillsSection from '../components/SkillsSection';
 import TestimonialsSection from '../components/TestimonialsSection';
-import { getHeroContent, getAboutContent, getHeroSlides } from '../services/portfolioService';
+import PageAtmosphere from '../components/PageAtmosphere';
+import { getHeroContent, getAboutContent } from '../services/portfolioService';
 import { portfolioData } from '../data/portfolioData';
 
 const Home = () => {
   const [profile, setProfile] = useState(portfolioData.profile);
-  const [heroSlides, setHeroSlides] = useState(portfolioData.heroSlides);
-  const [activeSlide, setActiveSlide] = useState(0);
+  const [heroLoaded, setHeroLoaded] = useState(false);
+
+  // Parallax refs for requestAnimationFrame pointer updates
+  const blobRef = useRef(null);
+  const stripedCircleRef = useRef(null);
+  const dottedCircleRef = useRef(null);
+  const portraitRef = useRef(null);
+  const shapeRef = useRef(null);
+  const animationFrameRef = useRef(null);
+
+  // Trigger hero entry animation
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setHeroLoaded(true);
+    }, 100);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Load dynamic data on mount
   useEffect(() => {
@@ -21,7 +35,6 @@ const Home = () => {
       try {
         const heroData = await getHeroContent();
         const aboutData = await getAboutContent();
-        const slides = await getHeroSlides();
 
         setProfile((prev) => ({
           ...prev,
@@ -40,15 +53,6 @@ const Home = () => {
           },
           strengths: aboutData.strengths || prev.strengths,
         }));
-
-        if (slides && slides.length > 0) {
-          setHeroSlides(slides.map((s, idx) => ({
-            id: s.id || `h${idx + 1}`,
-            headline: s.headline,
-            subtext: s.subtext,
-            order: s.order || idx + 1
-          })));
-        }
       } catch (error) {
         console.warn("Failed to load home page dynamic data, using static fallback", error);
       }
@@ -56,111 +60,167 @@ const Home = () => {
     loadDynamicData();
   }, []);
 
-  // Auto transition hero slides slowly (every 6 seconds)
+  // Desktop Mouse Parallax
   useEffect(() => {
-    const timer = setInterval(() => {
-      setActiveSlide((prev) => (prev + 1) % heroSlides.length);
-    }, 6000);
-    return () => clearInterval(timer);
-  }, [heroSlides.length]);
+    const isMobile = window.innerWidth < 900;
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    if (isMobile || mediaQuery.matches) return;
 
+    let targetX = 0;
+    let targetY = 0;
+    let currentX = 0;
+    let currentY = 0;
+
+    const handlePointerMove = (e) => {
+      const { innerWidth, innerHeight } = window;
+      targetX = (e.clientX / innerWidth - 0.5) * 2;
+      targetY = (e.clientY / innerHeight - 0.5) * 2;
+    };
+
+    const updateParallax = () => {
+      currentX += (targetX - currentX) * 0.08;
+      currentY += (targetY - currentY) * 0.08;
+
+      if (blobRef.current) {
+        blobRef.current.style.transform = `translate3d(${currentX * 5}px, ${currentY * 5}px, 0)`;
+      }
+      if (stripedCircleRef.current) {
+        stripedCircleRef.current.style.transform = `scale(1) rotate(6deg) translate3d(${currentX * 9}px, ${currentY * 9}px, 0)`;
+      }
+      if (dottedCircleRef.current) {
+        dottedCircleRef.current.style.transform = `translate3d(${currentX * 12}px, ${currentY * 12}px, 0)`;
+      }
+      if (portraitRef.current) {
+        portraitRef.current.style.transform = `translate3d(${currentX * 4}px, ${currentY * 4}px, 0)`;
+      }
+      if (shapeRef.current) {
+        shapeRef.current.style.transform = `scale(1) translate3d(${currentX * -6}px, ${currentY * -6}px, 0)`;
+      }
+
+      animationFrameRef.current = requestAnimationFrame(updateParallax);
+    };
+
+    window.addEventListener('pointermove', handlePointerMove);
+    animationFrameRef.current = requestAnimationFrame(updateParallax);
+
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove);
+      if (animationFrameRef.current) cancelAnimationFrame(animationFrameRef.current);
+    };
+  }, []);
+
+  // Section Scroll Reveals (IntersectionObserver)
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('section-visible');
+          }
+        });
+      },
+      { threshold: 0.15 }
+    );
+
+    const elements = document.querySelectorAll('.reveal-section');
+    elements.forEach((el) => observer.observe(el));
+
+    return () => observer.disconnect();
+  }, []);
 
   return (
-    <div className="bg-edi-cream min-h-screen flex flex-col justify-between overflow-x-hidden font-sans antialiased">
+    <div className={`bg-[#FFFFFF] min-h-screen flex flex-col justify-between overflow-x-hidden font-sans antialiased ${heroLoaded ? 'hero-loaded' : ''}`}>
       <Navbar />
 
-      <main className="flex-grow w-full">
+      <main className="flex-grow w-full site-main">
 
-        {/* 1. HERO SECTION */}
-        <section id="hero" className="min-h-[calc(100vh-90px)] flex items-center pt-32 pb-24 px-6 md:px-12 max-w-7xl mx-auto w-full relative z-10">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-20 items-center w-full">
+        {/* 1. PORTRAIT-LED HOME HERO SECTION */}
+        <section className="home-hero">
+          {/* Pale Background Blob */}
+          <div ref={blobRef} className="hero-soft-blob" />
+
+          {/* Page Atmosphere 2D Accent Container */}
+          <PageAtmosphere variant="home" />
+
+          <div className="home-hero-container">
             
-            {/* Left Column (47% width) */}
-            <div className="lg:col-span-6 flex flex-col gap-8 text-left py-4">
-              <span className="text-section-label text-edi-accent font-bold block animate-[fadeIn_0.5s_ease-out_forwards]">
-                HI, I'M
-              </span>
-              
-              {/* Headline Slideshow */}
-              <div className="relative h-80 sm:h-64 md:h-56 lg:h-64 my-2">
-                {heroSlides.map((slide, index) => (
-                  <div
-                    key={slide.id}
-                    className={`absolute inset-0 transition-all duration-1000 ease-in-out flex flex-col gap-6 ${
-                      index === activeSlide 
-                        ? 'opacity-100 translate-y-0 pointer-events-auto' 
-                        : 'opacity-0 translate-y-6 pointer-events-none'
-                    }`}
-                  >
-                    <h1 className="font-serif text-edi-heading text-hero-headline">
-                      {slide.headline}
-                    </h1>
-                    <p className="text-editorial-body text-edi-body font-sans max-w-xl font-medium">
-                      {slide.subtext}
-                    </p>
-                  </div>
-                ))}
+            {/* LEFT CONTENT SIDE */}
+            <div className="home-hero-content">
+              <h1>
+                <span>HI, I’M</span>
+                <strong>{profile.name}</strong>
+              </h1>
+
+              <div className="home-hero-copy">
+                <p>
+                  <strong>National Award-Winning Behaviour Change & IEC Specialist</strong> with <strong>9+ years</strong> building public sanitation systems, solid waste management campaigns, and environmental education networks across Andhra Pradesh & Telangana.
+                </p>
+                <p>
+                  From corporate operations at <strong>Wipro and Accenture</strong> to municipal governance inside <strong>Guntur, Rajamahendravaram, Nellore, and Greater Hyderabad</strong> &mdash; bridging policy and grassroots human behaviour.
+                </p>
               </div>
 
-              {/* Action CTAs */}
-              <div className="flex flex-wrap items-center gap-6 mt-4 font-sans">
-                <Link
-                  to="/contact"
-                  className="px-8 py-4 bg-transparent text-edi-black border border-edi-black text-xs font-semibold uppercase tracking-[0.1em] rounded-[4px] hover:bg-edi-black hover:text-white transition-all duration-300 focus:outline-none"
-                >
+              <div className="flex flex-wrap items-center gap-4 mt-8 z-10 relative">
+                <Link to="/contact" className="hero-contact-button">
                   CONTACT
                 </Link>
-                <Link
-                  to="/professional-profile"
-                  className="px-8 py-4 bg-transparent text-edi-black border border-edi-border text-xs font-semibold uppercase tracking-[0.1em] rounded-[4px] hover:bg-edi-black hover:text-white transition-all duration-300 focus:outline-none"
+                <Link 
+                  to="/professional-profile" 
+                  className="inline-flex items-center justify-center px-8 py-4 bg-transparent text-[#111111] border border-[#111111] rounded-[4px] font-sans text-xs font-semibold uppercase tracking-wider hover:bg-[#111111] hover:text-white transition-all duration-300"
                 >
                   VIEW PROFILE
                 </Link>
               </div>
             </div>
 
-            {/* Right Column (53% width) */}
-            <div className="lg:col-span-6 relative flex justify-center items-center">
-              <PortraitFrame src={profile.images.heroPortrait} alt={`${profile.name} Portrait`} />
-              
-              {/* Rotating CV Badge overlapping lower section of the portrait */}
-              <RotatingResumeBadge className="absolute -bottom-8 right-0 sm:right-6 lg:-right-6 z-20 shadow-xl" />
+            {/* RIGHT PORTRAIT VISUAL SIDE */}
+            <div className="home-hero-visual">
+              <div ref={shapeRef} className="portrait-semicircle" />
+
+              <img
+                ref={portraitRef}
+                src={profile.images.heroPortrait}
+                alt="JSR Annamayya"
+              />
+
+              <div ref={stripedCircleRef} className="decorative-striped-circle" />
+
+              <div ref={dottedCircleRef} className="decorative-dotted-circle">
+                <div className="dotted-circle-inner" />
+              </div>
             </div>
 
           </div>
         </section>
 
 
-        {/* 2. PROFILE INTRODUCTION SECTION */}
-        <section className="py-24 md:py-32 bg-edi-white border-y border-edi-border/60 w-full">
+        {/* 2. PROFILE INTRODUCTION SECTION WITH CLIP REVEAL */}
+        <section className="reveal-section py-24 md:py-32 bg-[#FFFFFF] border-y border-[#DDD7CE]/60 w-full relative z-10">
           <div className="max-w-7xl mx-auto px-6 md:px-12 grid grid-cols-1 lg:grid-cols-12 gap-16 lg:gap-24 items-center">
             
-            {/* Left Image (42% width) */}
+            {/* Left Image with Clip-Path Reveal */}
             <div className="lg:col-span-5 relative group select-none">
-              <div className="absolute top-4 -right-4 w-12 h-16 bg-edi-beige/40 z-0"></div>
-              <div className="aspect-[4/5] w-full overflow-hidden border border-edi-border bg-edi-cream relative z-10 rounded-none shadow-sm">
+              <div className="aspect-[4/5] w-full overflow-hidden border border-[#DDD7CE] bg-[#F8F6F1] relative z-10 clip-reveal-left shadow-sm">
                 <img
                   src={profile.images.profileAlt}
                   alt={`${profile.name} In Action`}
                   className="w-full h-full object-cover"
                   loading="lazy"
                 />
-                <div className="absolute inset-0 bg-edi-black/10 pointer-events-none"></div>
               </div>
-              {/* Section number overlay */}
-              <div className="absolute -top-6 -left-6 text-edi-accent font-mono text-[10px] font-bold z-20">01 / INTRO</div>
+              <div className="absolute -top-6 -left-6 text-[#A84F43] font-mono text-[10px] font-bold z-20">01 / INTRO</div>
             </div>
 
-            {/* Right Content (58% width) */}
-            <div className="lg:col-span-7 flex flex-col gap-6 text-left">
-              <span className="text-section-label text-edi-accent font-bold block">
+            {/* Right Content */}
+            <div className="lg:col-span-7 flex flex-col gap-6 text-left font-sans">
+              <span className="text-section-label text-[#A84F43] font-bold block">
                 JSR ANNAMAYYA
               </span>
               <h2 className="font-serif text-section-headline text-edi-heading">
                 National Award-Winning Behaviour Change & IEC Specialist
               </h2>
               
-              <div className="w-16 h-[1px] bg-edi-accent my-2"></div>
+              <div className="w-16 h-[1px] bg-[#A84F43] my-2"></div>
               
               <div className="flex flex-col gap-4 text-edi-body font-sans font-medium">
                 <p className="font-serif text-2xl sm:text-3xl italic text-edi-heading leading-relaxed font-light">
@@ -174,11 +234,11 @@ const Home = () => {
               {/* Strengths highlights list */}
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mt-2 font-sans text-xs sm:text-sm font-semibold text-edi-heading">
                 <div className="flex items-center gap-3">
-                  <span className="w-1.5 h-1.5 bg-edi-accent rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-[#A84F43] rounded-full"></span>
                   <span>9+ Years Active Public Systems & IEC Expert</span>
                 </div>
                 <div className="flex items-center gap-3">
-                  <span className="w-1.5 h-1.5 bg-edi-accent rounded-full"></span>
+                  <span className="w-1.5 h-1.5 bg-[#A84F43] rounded-full"></span>
                   <span>National Award civilian recognition recipient</span>
                 </div>
               </div>
@@ -197,15 +257,19 @@ const Home = () => {
         </section>
 
 
-        {/* 3. VISION & LEADERSHIP SECTION (VisionSection Component) */}
-        <VisionSection />
+        {/* 3. VISION & LEADERSHIP SECTION */}
+        <div className="reveal-section">
+          <VisionSection />
+        </div>
 
 
-        {/* 4. SKILLS SECTION (SkillsSection Component) */}
-        <SkillsSection />
+        {/* 4. SKILLS SECTION */}
+        <div className="reveal-section">
+          <SkillsSection />
+        </div>
 
 
-        {/* 5. TESTIMONIALS & RECOGNITION SECTION (TestimonialsSection Component) */}
+        {/* 5. TESTIMONIALS & RECOGNITION AUTO-SLIDER */}
         <TestimonialsSection />
 
       </main>
