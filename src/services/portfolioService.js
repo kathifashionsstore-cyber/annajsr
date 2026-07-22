@@ -833,3 +833,135 @@ export const deleteDevelopment = async (id) => {
   await deleteDoc(doc(db, 'development', id));
 };
 
+// --- FULL CLIENT-SIDE FIREBASE SEEDING & SYNC ---
+export const seedFirebaseDatabaseClient = async () => {
+  // 1. Hero
+  const heroData = {
+    title: "Behaviour Change & \nIEC Specialist",
+    subtitle: "9+ years building public systems, IEC/BCC strategy, and climate action programs across Andhra Pradesh & Telangana.",
+    introText: "Hi, I am JSR Annamayya. I am a National Award winning Behaviour Change and IEC Specialist with over nine years of experience building public systems and driving climate action."
+  };
+  await setDoc(doc(db, 'content', 'hero'), heroData, { merge: true });
+
+  const seedCollection = async (colName, items) => {
+    const colRef = collection(db, colName);
+    const snap = await getDocs(colRef);
+    await Promise.all(snap.docs.map(d => deleteDoc(doc(db, colName, d.id))));
+    await Promise.all(items.map(item => addDoc(colRef, item)));
+  };
+
+  // 2. Hero Slides
+  await seedCollection('heroSlides', portfolioData.heroSlides.map((s, idx) => ({
+    order: s.order || idx + 1,
+    headline: s.headline,
+    subtext: s.subtext,
+    imageUrl: ""
+  })));
+
+  // 3. About
+  await setDoc(doc(db, 'content', 'about'), {
+    intro: portfolioData.profile.bio.intro,
+    eduBio: portfolioData.profile.bio.bio2,
+    serviceBio: portfolioData.profile.bio.bio1,
+    corporateBio: portfolioData.profile.bio.bio3,
+    strengths: portfolioData.profile.strengths,
+    imageUrl: portfolioData.profile.images.profileAlt
+  }, { merge: true });
+
+  // 4. Timeline
+  await seedCollection('timeline', portfolioData.experience.map((exp, idx) => ({
+    order: exp.order || idx + 1,
+    number: exp.dateRange,
+    title: exp.organisation,
+    subtitle: exp.role,
+    text: exp.description
+  })));
+
+  // 5. Services
+  await seedCollection('services', portfolioData.services.map((s, idx) => ({
+    order: s.order || idx + 1,
+    title: s.title,
+    description: s.description,
+    icon: s.icon
+  })));
+
+  // 6. Departments / Collaborations
+  await seedCollection('departments', portfolioData.departments.map((d, idx) => ({
+    order: d.order || idx + 1,
+    name: d.name,
+    logo: d.logo || ''
+  })));
+
+  // 7. Case Studies
+  await seedCollection('caseStudies', portfolioData.caseStudies.map((cs, idx) => ({
+    order: cs.order || idx + 1,
+    title: cs.title,
+    organisation: cs.organisation,
+    dateRange: cs.dateRange,
+    coverImage: cs.image || '',
+    tags: cs.tags || [],
+    problem: cs.problem || '',
+    objective: cs.objective || '',
+    strategy: cs.strategy || '',
+    implementation: cs.implementation || '',
+    results: cs.results || '',
+    lessons: cs.lessons || ''
+  })));
+
+  // 8. Highlights
+  await seedCollection('highlights', portfolioData.highlights.map((h, idx) => ({
+    order: h.order || idx + 1,
+    headline: h.headline,
+    year: h.year,
+    icon: h.icon
+  })));
+
+  // 9. Stats
+  await seedCollection('stats', portfolioData.stats.map((st, idx) => ({
+    order: idx + 1,
+    value: st.value,
+    label: st.label
+  })));
+
+  // 10. Awards
+  await seedCollection('awards', portfolioData.awards.map((aw, idx) => ({
+    order: idx + 1,
+    title: aw.title,
+    year: aw.year,
+    issuer: aw.issuer,
+    desc: aw.desc
+  })));
+
+  // 11. Chatbot KB
+  await seedCollection('chatbotKnowledgeBase', FALLBACK_CHATBOT_KB);
+
+  // 12. Vision
+  await seedCollection('vision', portfolioData.vision.map((v, idx) => ({
+    order: idx + 1,
+    number: v.number || `0${idx + 1}`,
+    title: v.title,
+    paragraph: v.paragraph,
+    image: v.image || ''
+  })));
+
+  // 13. Development
+  await seedCollection('development', portfolioData.development.map((d, idx) => ({
+    order: idx + 1,
+    year: d.year,
+    program: d.program,
+    institution: d.institution,
+    description: d.description
+  })));
+
+  // 14. Skills
+  await seedCollection('skills', [
+    { label: "Behaviour Change Communication", target: 100, order: 1 },
+    { label: "IEC Strategy", target: 100, order: 2 },
+    { label: "Community Mobilisation", target: 100, order: 3 },
+    { label: "Program Leadership", target: 100, order: 4 }
+  ]);
+
+  await logSystemActivity('seed_database', 'Seeded Firebase Firestore database with master portfolio content');
+  return true;
+};
+

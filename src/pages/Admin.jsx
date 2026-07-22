@@ -23,7 +23,8 @@ import {
   getChatbotKB, addChatbotKBEntry, updateChatbotKBEntry, deleteChatbotKBEntry,
   getVisionBlocks, saveVisionBlock, deleteVisionBlock,
   getSkills, saveSkill, deleteSkill,
-  getDevelopment, saveDevelopment, deleteDevelopment
+  getDevelopment, saveDevelopment, deleteDevelopment,
+  seedFirebaseDatabaseClient
 } from '../services/portfolioService';
 import { uploadToImgBB, validateVideoFile, compressVideo } from '../utils/compressor';
 import { 
@@ -191,11 +192,17 @@ const Admin = () => {
     }
     metaTag.content = 'noindex, nofollow';
 
+    const isPasscodeAuth = localStorage.getItem('admin_passcode_auth') === 'true';
+    if (isPasscodeAuth) {
+      setIsAuthenticated(true);
+      loadAllData();
+    }
+
     const unsubscribe = onAuthStateChanged(auth, (user) => {
       if (user) {
         setIsAuthenticated(true);
         loadAllData();
-      } else {
+      } else if (!localStorage.getItem('admin_passcode_auth')) {
         setIsAuthenticated(false);
       }
     });
@@ -337,22 +344,38 @@ const Admin = () => {
   };
 
 
-  // Firebase Auth Email and Password submission
+  // Firebase Auth & Passcode submission
   const handleAuthSubmit = async (e) => {
     e.preventDefault();
     setAuthError('');
     setLoading(true);
+
+    const envPasscode = import.meta.env.VITE_ADMIN_PASSCODE || '1234';
+
+    if (password === envPasscode || email === envPasscode) {
+      localStorage.setItem('admin_passcode_auth', 'true');
+      setIsAuthenticated(true);
+      await loadAllData();
+      setLoading(false);
+      return;
+    }
+
     try {
       await signInWithEmailAndPassword(auth, email, password);
     } catch (err) {
       console.error("Firebase Sign-In Error: ", err);
-      // Display user-friendly message based on standard error codes
       if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-        setAuthError('Incorrect email or password.');
+        setAuthError('Incorrect email or password. (Admin Passcode: 1234)');
       } else if (err.code === 'auth/invalid-email') {
-        setAuthError('Please enter a valid email address.');
+        if (password === envPasscode || email === envPasscode) {
+          localStorage.setItem('admin_passcode_auth', 'true');
+          setIsAuthenticated(true);
+          await loadAllData();
+        } else {
+          setAuthError('Please enter a valid email or passcode.');
+        }
       } else {
-        setAuthError(err.message || 'Authentication failed. Please check credentials.');
+        setAuthError(err.message || 'Authentication failed.');
       }
     } finally {
       setLoading(false);
@@ -361,11 +384,29 @@ const Admin = () => {
 
   const handleLogout = async () => {
     try {
-      await signOut(auth);
+      localStorage.removeItem('admin_passcode_auth');
+      await signOut(auth).catch(() => {});
+      setIsAuthenticated(false);
       setEmail('');
       setPassword('');
     } catch (err) {
-      console.error("Firebase Sign-Out Error: ", err);
+      console.error("Sign-Out Error: ", err);
+    }
+  };
+
+  const handleSeedDatabase = async () => {
+    if (window.confirm("Are you sure you want to seed/update Firebase Firestore with master portfolio data?")) {
+      setLoading(true);
+      try {
+        await seedFirebaseDatabaseClient();
+        showAdminToast("Firebase Firestore updated and seeded successfully!");
+        await loadAllData();
+      } catch (err) {
+        console.error("Seed error: ", err);
+        showAdminToast(err.message || "Failed to update Firebase database.", true);
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -898,8 +939,17 @@ const Admin = () => {
           </nav>
         </div>
 
-        <div className="text-[10px] text-white/30 uppercase tracking-widest font-mono mt-10 md:mt-0">
-          Database Active (Firestore)
+        <div className="flex flex-col gap-2 mt-6 md:mt-0">
+          <button
+            onClick={handleSeedDatabase}
+            className="w-full py-2 px-3 bg-white/10 hover:bg-secondary hover:text-charcoal text-white font-bold text-[10px] uppercase tracking-wider rounded-lg transition-all flex items-center justify-center gap-2 border border-white/10"
+            title="Seed and update all collections in Firebase Firestore"
+          >
+            <span>Update Firebase</span>
+          </button>
+          <div className="text-[10px] text-white/30 uppercase tracking-widest font-mono text-center">
+            Database Active (Firestore)
+          </div>
         </div>
       </aside>
 
@@ -920,12 +970,21 @@ const Admin = () => {
                 <h2 className="text-2xl font-black text-charcoal tracking-tight">Overview & Analytics</h2>
                 <p className="text-xs text-neutraltext font-medium mt-1">Real-time visitor telemetry, interactive aggregates, and operational metrics.</p>
               </div>
-              <button 
-                onClick={loadAllData}
-                className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-charcoal font-bold text-xs rounded-full shadow-sm flex items-center gap-2 transition-colors focus:outline-none"
-              >
-                Refresh Data
-              </button>
+              <div className="flex flex-wrap items-center gap-3">
+                <button 
+                  onClick={handleSeedDatabase}
+                  className="px-4 py-2 bg-primary hover:bg-primary/90 text-white font-bold text-xs rounded-full shadow-sm flex items-center gap-2 transition-all focus:outline-none"
+                  title="Populate/Update Firebase Firestore with initial master data"
+                >
+                  <span>Update Firebase</span>
+                </button>
+                <button 
+                  onClick={loadAllData}
+                  className="px-4 py-2 border border-gray-200 hover:bg-gray-50 text-charcoal font-bold text-xs rounded-full shadow-sm flex items-center gap-2 transition-colors focus:outline-none"
+                >
+                  Refresh Data
+                </button>
+              </div>
             </div>
 
             {/* Aggregated Numbers Grid */}
